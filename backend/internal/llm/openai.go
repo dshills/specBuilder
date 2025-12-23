@@ -60,13 +60,16 @@ type openAIResponse struct {
 }
 
 // usesCompletionTokens returns true if the model uses max_completion_tokens
-// instead of max_tokens. This applies to o1, o3, gpt-4o and newer models.
+// instead of max_tokens. This applies to o1, o3, gpt-4o, gpt-5 and newer models.
+// Only legacy models (gpt-3.5, gpt-4 without suffix) use max_tokens.
 func usesCompletionTokens(model string) bool {
 	m := strings.ToLower(model)
-	return strings.HasPrefix(m, "o1") ||
-		strings.HasPrefix(m, "o3") ||
-		strings.Contains(m, "gpt-4o") ||
-		strings.Contains(m, "gpt-4.5")
+	// Legacy models that use max_tokens
+	if strings.HasPrefix(m, "gpt-3.5") || m == "gpt-4" || strings.HasPrefix(m, "gpt-4-") {
+		return false
+	}
+	// All other models (o1, o3, gpt-4o, gpt-5, etc.) use max_completion_tokens
+	return true
 }
 
 // Complete sends a completion request to OpenAI.
