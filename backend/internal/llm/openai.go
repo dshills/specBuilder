@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -32,11 +33,12 @@ func (c *OpenAIClient) Provider() Provider { return ProviderOpenAI }
 func (c *OpenAIClient) Model() string      { return c.model }
 
 type openAIRequest struct {
-	Model       string          `json:"model"`
-	Messages    []openAIMessage `json:"messages"`
-	Temperature float64         `json:"temperature"`
-	MaxTokens   int             `json:"max_tokens,omitempty"`
-	Seed        *int            `json:"seed,omitempty"`
+	Model               string          `json:"model"`
+	Messages            []openAIMessage `json:"messages"`
+	Temperature         float64         `json:"temperature,omitempty"`
+	MaxTokens           int             `json:"max_tokens,omitempty"`
+	MaxCompletionTokens int             `json:"max_completion_tokens,omitempty"`
+	Seed                *int            `json:"seed,omitempty"`
 }
 
 type openAIMessage struct {
@@ -57,6 +59,16 @@ type openAIResponse struct {
 	} `json:"error,omitempty"`
 }
 
+// usesCompletionTokens returns true if the model uses max_completion_tokens
+// instead of max_tokens. This applies to o1, o3, gpt-4o and newer models.
+func usesCompletionTokens(model string) bool {
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.Contains(m, "gpt-4o") ||
+		strings.Contains(m, "gpt-4.5")
+}
+
 // Complete sends a completion request to OpenAI.
 func (c *OpenAIClient) Complete(ctx context.Context, req Request) (*Response, error) {
 	messages := make([]openAIMessage, len(req.Messages))
@@ -65,11 +77,17 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (*Response, er
 	}
 
 	oaiReq := openAIRequest{
-		Model:       c.model,
-		Messages:    messages,
-		Temperature: req.Temperature,
-		MaxTokens:   req.MaxTokens,
-		Seed:        req.Seed,
+		Model:    c.model,
+		Messages: messages,
+		Seed:     req.Seed,
+	}
+
+	// Newer models (o1, gpt-4o, etc.) use max_completion_tokens instead of max_tokens
+	if usesCompletionTokens(c.model) {
+		oaiReq.MaxCompletionTokens = req.MaxTokens
+	} else {
+		oaiReq.Temperature = req.Temperature
+		oaiReq.MaxTokens = req.MaxTokens
 	}
 
 	body, err := json.Marshal(oaiReq)
