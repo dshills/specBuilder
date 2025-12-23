@@ -1,0 +1,477 @@
+{
+	"meta": {
+		"spec_version": "0.1.0",
+		"generated_at": "2025-12-23",
+		"status": "draft",
+		"authoring_notes": [
+			"This spec is intended to be directly consumable by AI coding agents.",
+			"SPEC.json is canonical; all other artifacts derive from it."
+		]
+	},
+	"product": {
+		"name": "Spec Builder",
+		"purpose": "Elicit, refine, and compile user ideas into formal, machine-usable software specifications suitable for AI coding agents (Codex, Claude Code, etc.).",
+		"primary_users": [
+			"Product engineers",
+			"Founders",
+			"Technical leads"
+		],
+		"non_goals": [
+			"Generating production code for arbitrary projects",
+			"Replacing coding agents",
+			"Operating as a freeform chat app without structure or provenance",
+			"Storing canonical state in the browser"
+		],
+		"success_metrics": [
+			"Users can reach an exportable AI Coder Pack with no unresolved 'missing' issues",
+			"Every spec field is traceable to one or more answer versions",
+			"Recompile after answer edit completes quickly and reproducibly"
+		]
+	},
+	"scope": {
+		"in_scope": [
+			"Question-driven spec elicitation",
+			"Versioned answers with edit-and-recompile",
+			"Deterministic spec compilation into structured JSON",
+			"Validation and issue tracking (missing/conflict/assumption)",
+			"Visual exploration of spec structure (tree/map)",
+			"Export of AI-coder-ready artifact bundle"
+		],
+		"out_of_scope": [
+			"Project/task execution (e.g., Jira sync) beyond generating PLAN.md",
+			"Code generation and repo scaffolding (optional future enhancement)",
+			"Multi-user collaboration (MVP is single-user per project)"
+		],
+		"assumptions": [
+			"LLMs are treated as constrained compilers producing structured outputs only.",
+			"Backend is authoritative for LLM calls, compilation, validation, snapshots, and exports.",
+			"Same inputs (project + answer versions + prompt templates + model config) must yield the same compiled spec output."
+		]
+	},
+	"architecture": {
+		"frontend": {
+			"language": "TypeScript",
+			"framework": "React",
+			"responsibilities": [
+				"Render question ledger and answer editor",
+				"Render spec views (Readable Markdown, Formal JSON, Diff)",
+				"Render issue list and inline highlights",
+				"Render spec map/tree and filtering",
+				"Trigger backend actions via API (ask, answer, recompile, export)"
+			],
+			"non_responsibilities": [
+				"No LLM calls",
+				"No canonical compilation logic",
+				"No persistence of canonical project state (beyond UI cache)"
+			]
+		},
+		"backend": {
+			"language": "Go",
+			"runtime": "Go 1.22+",
+			"style": "Modular service, minimal dependencies, explicit domain invariants",
+			"responsibilities": [
+				"Project/question/answer CRUD",
+				"Answer versioning and supersession",
+				"LLM orchestration (planner/asker/compiler/validator)",
+				"Spec compilation and schema validation",
+				"Issue generation and persistence",
+				"Snapshot creation and traceability",
+				"AI Coder Pack export generation (filesystem + zip)"
+			],
+			"api_style": "JSON over HTTP (REST-ish). Command-like endpoints allowed (e.g., /compile, /export)."
+		}
+	},
+	"persistence": {
+		"database": {
+			"mvp": {
+				"type": "SQLite",
+				"reason": "Fast local development, simple deployment, adequate for MVP"
+			},
+			"production": {
+				"type": "Postgres",
+				"reason": "Concurrent usage, durability, operational tooling"
+			},
+			"managed_by": "backend",
+			"transaction_rules": [
+				"Answer supersession + snapshot creation must be consistent (single transaction where feasible)",
+				"Snapshots are append-only; never mutated in place"
+			]
+		},
+		"filesystem": {
+			"managed_by": "backend",
+			"purpose": "Build AI Coder Pack exports (directory + zip)",
+			"constraints": [
+				"Export contents must be derived from a specific snapshot ID",
+				"Exports must be reproducible (same snapshot -> identical files except timestamps, if included)"
+			]
+		}
+	},
+	"domain_model": {
+		"entities": {
+			"Project": {
+				"fields": {
+					"id": "uuid",
+					"name": "string",
+					"created_at": "timestamp",
+					"updated_at": "timestamp"
+				}
+			},
+			"Question": {
+				"fields": {
+					"id": "uuid",
+					"project_id": "uuid",
+					"text": "string",
+					"type": "enum(single, multi, freeform)",
+					"options": "array<string>|null",
+					"tags": "array<string>",
+					"priority": "integer",
+					"spec_paths": "array<string>",
+					"status": "enum(unanswered, answered, needs_review)",
+					"created_at": "timestamp",
+					"question_rules": [
+						"For type=single or type=multi, options SHOULD be provided unless the domain is unbounded.",
+						"If options is null for single/multi, the question text MUST specify a constrained answer shape.",
+						"For type=freeform, the question text MUST specify the expected format (1-3 sentences, bullets, etc.)."
+					]
+				}
+			},
+			"Answer": {
+				"fields": {
+					"id": "uuid",
+					"project_id": "uuid",
+					"question_id": "uuid",
+					"value": "json (any JSON value: string/number/bool/object/array/null)",
+					"version": "integer",
+					"supersedes": "uuid|null",
+					"created_at": "timestamp"
+				},
+				"invariants": [
+					"Only one 'latest' answer exists per question (by following supersedes chain).",
+					"Editing creates a new Answer with version=prev+1 and supersedes=prevAnswerId.",
+					"Answers are immutable after creation."
+				]
+			},
+			"SpecSnapshot": {
+				"fields": {
+					"id": "uuid",
+					"project_id": "uuid",
+					"spec": "json",
+					"created_at": "timestamp",
+					"derived_from": "map<question_id, answer_version>",
+					"compiler": {
+						"model": "string",
+						"prompt_version": "string",
+						"temperature": "number",
+						"seed": "number|null"
+					}
+				},
+				"invariants": [
+					"Snapshots are append-only.",
+					"Snapshot.spec must validate against the SpecSchema.",
+					"Snapshot.derived_from must reflect the latest answer versions used during compilation."
+				]
+			},
+			"Issue": {
+				"fields": {
+					"id": "uuid",
+					"project_id": "uuid",
+					"snapshot_id": "uuid",
+					"type": "enum(conflict, missing, assumption)",
+					"severity": "enum(info, warn, error)",
+					"message": "string",
+					"related_spec_paths": "array<string>",
+					"related_question_ids": "array<uuid>",
+					"created_at": "timestamp"
+				}
+			}
+		}
+	},
+	"spec_schema": {
+		"name": "ProjectImplementationSpec",
+		"required_sections": [
+			"product",
+			"scope",
+			"personas",
+			"requirements",
+			"workflows",
+			"data_model",
+			"api",
+			"ui",
+			"non_functionals",
+			"acceptance",
+			"plan",
+			"trace"
+		],
+		"recommended_sections": [
+			"integrations",
+			"observability",
+			"security_privacy"
+		],
+		"spec_paths_convention": [
+			"Use JSON pointer-like paths, e.g. /requirements/functional/0",
+			"Spec compiler should emit paths used in issues and trace map"
+		]
+	},
+	"llm": {
+		"execution": "backend_only",
+		"interaction_model": "structured tool-style calls",
+		"roles": {
+			"planner": "Selects next questions based on missing/uncertain spec areas and dependency ordering",
+			"asker": "Generates constrained clarifying questions with types, tags, and affected spec paths",
+			"compiler": "Produces updated SPEC (ProjectImplementationSpec JSON) and trace mappings",
+			"validator": "Produces Issue list based on schema and semantic consistency rules"
+		},
+		"determinism_controls": {
+			"temperature": 0,
+			"top_p": 1,
+			"seed": "fixed-when-supported",
+			"prompt_versioning": "required"
+		},
+		"hard_rules": [
+			"Compiler output must be valid JSON matching SpecSchema (no prose wrappers).",
+			"Invalid outputs are rejected; no silent fallback.",
+			"All LLM outputs must be persisted with inputs and prompt versions for auditability.",
+			"All LLM-generated issues are 'IssueDraft' objects; backend hydrates id/project_id/snapshot_id/created_at when persisting."
+		],
+		"provider": {
+			"default": "openai",
+			"supported": [
+				"openai",
+				"anthropic",
+				"google"
+			],
+			"selection": "config",
+			"rate_limit_strategy": "simple in-process limiter (MVP), pluggable later",
+			"retry_policy": "retry only on transport/5xx; never retry invalid JSON outputs without logging"
+		}
+	},
+	"behavior": {
+		"core_flows": [
+			{
+				"name": "Create Project",
+				"steps": [
+					"User creates a project with a name",
+					"System initializes baseline questions (minimum set) OR begins planner loop"
+				]
+			},
+			{
+				"name": "Answer Question",
+				"steps": [
+					"User submits an answer",
+					"Backend versions the answer (supersession if edit)",
+					"Backend triggers compilation (sync) or queues compilation (async optional)",
+					"Backend returns new snapshot + issues"
+				]
+			},
+			{
+				"name": "Edit Prior Answer",
+				"steps": [
+					"User edits an existing answer",
+					"Backend creates a new answer version superseding prior",
+					"Backend recompiles spec and produces new snapshot",
+					"Backend emits issues and impact hints (optional)",
+					"UI shows diff and issue changes"
+				]
+			},
+			{
+				"name": "Export AI Coder Pack",
+				"steps": [
+					"User selects a snapshot (default latest)",
+					"Backend generates export bundle derived from that snapshot",
+					"User downloads zip"
+				]
+			}
+		]
+	},
+	"api": {
+		"principles": [
+			"Backend is source of truth",
+			"All writes are explicit and auditable",
+			"Compilation produces immutable snapshots"
+		],
+		"endpoints": [
+			{
+				"method": "POST",
+				"path": "/projects",
+				"request": {
+					"name": "string"
+				},
+				"response": {
+					"project_id": "uuid"
+				}
+			},
+			{
+				"method": "GET",
+				"path": "/projects/{id}",
+				"response": {
+					"project": "Project",
+					"latest_snapshot_id": "uuid|null"
+				}
+			},
+			{
+				"method": "GET",
+				"path": "/projects/{id}/questions",
+				"response": {
+					"questions": "array<Question>"
+				}
+			},
+			{
+				"method": "POST",
+				"path": "/projects/{id}/answers",
+				"request": {
+					"question_id": "uuid",
+					"value": "json"
+				},
+				"response": {
+					"answer_id": "uuid",
+					"snapshot_id": "uuid",
+					"issues": "array<Issue>"
+				}
+			},
+			{
+				"method": "POST",
+				"path": "/projects/{id}/compile",
+				"request": {
+					"mode": "enum(latest_answers, specific_answer_versions)",
+					"answer_versions": "map<uuid,int>|null"
+				},
+				"response": {
+					"snapshot_id": "uuid",
+					"issues": "array<Issue>"
+				}
+			},
+			{
+				"method": "GET",
+				"path": "/projects/{id}/snapshots/{snapshot_id}",
+				"response": {
+					"snapshot": "SpecSnapshot",
+					"issues": "array<Issue>"
+				}
+			},
+			{
+				"method": "GET",
+				"path": "/projects/{id}/snapshots/{snapshot_id}/diff/{other_snapshot_id}",
+				"response": {
+					"diff": "json"
+				}
+			},
+			{
+				"method": "POST",
+				"path": "/projects/{id}/next-questions",
+				"request": {
+					"count": "int"
+				},
+				"response": {
+					"questions": "array<Question>"
+				}
+			},
+			{
+				"method": "POST",
+				"path": "/projects/{id}/export",
+				"request": {
+					"snapshot_id": "uuid"
+				},
+				"response": {
+					"download_url": "string"
+				}
+			}
+		]
+	},
+	"ui": {
+		"layout": {
+			"left": "Question Ledger",
+			"center": "Spec Workspace (Readable, Formal, Diff)",
+			"right": "Spec Map (tree for MVP)"
+		},
+		"features": [
+			"Filter questions by tags/status/spec section",
+			"Edit answer with version history",
+			"Show snapshot selector and diff viewer",
+			"Issues panel with severity filters",
+			"Clicking spec map node filters ledger and scrolls spec view"
+		],
+		"mvp_visualization": {
+			"type": "tree",
+			"nodes": [
+				"Product",
+				"Scope",
+				"Personas",
+				"Requirements",
+				"Workflows",
+				"Data Model",
+				"API",
+				"UI",
+				"NFRs",
+				"Observability",
+				"Security/Privacy",
+				"Acceptance",
+				"Plan"
+			]
+		}
+	},
+	"exports": {
+		"ai_coder_pack": {
+			"format": "zip",
+			"files": [
+				"SPEC.json",
+				"SPEC.md",
+				"DECISIONS.md",
+				"ACCEPTANCE.md",
+				"PLAN.md",
+				"TRACE.json",
+				"CONTRACTS/openapi.json (optional in MVP)",
+				"CONTRACTS/schemas/*.json (optional in MVP)"
+			],
+			"trace_rules": [
+				"TRACE.json maps spec paths to (question_id, answer_id, answer_version)",
+				"Every major spec section must have at least one trace entry or produce a 'missing' issue"
+			],
+			"derivation": {
+				"SPEC.json": "exact snapshot.spec",
+				"TRACE.json": "exact snapshot.trace",
+				"SPEC.md": "deterministic render from snapshot.spec using backend template v1",
+				"PLAN.md": "render from snapshot.spec.plan (or derived if missing, but then emit missing issue)",
+				"ACCEPTANCE.md": "render from snapshot.spec.acceptance",
+				"DECISIONS.md": "static template + injected compiler metadata (model, prompt_version)"
+			}
+		},
+		"download_token_ttl_hours": 24,
+		"cleanup_policy": "Best-effort cleanup on startup + periodic sweep (MVP)"
+	},
+	"acceptance": {
+		"definition_of_done_mvp": [
+			"User can create a project and answer questions",
+			"Editing an answer creates a new version (history preserved)",
+			"Each answer change creates a new spec snapshot",
+			"Snapshot.spec validates against SpecSchema",
+			"Issues are produced and displayed",
+			"Export produces a zip containing at least SPEC.json, SPEC.md, PLAN.md, TRACE.json",
+			"Trace coverage exists for all populated spec fields"
+		],
+		"failure_conditions": [
+			"Answer edit overwrites old answer (no version history)",
+			"Spec fields exist without provenance in TRACE.json",
+			"Compiler returns non-JSON or prose-wrapped output",
+			"Snapshots are mutated in place",
+			"Frontend performs LLM calls or treats local state as canonical"
+		]
+	},
+	"question_seeding": {
+		"mode": "static_minimum_set_then_planner",
+		"minimum_set": [
+			"What is the product name and one-sentence purpose?",
+			"Who are the primary users/personas?",
+			"What is explicitly out of scope?",
+			"Describe the primary workflow (happy path) in 5-10 steps.",
+			"What data entities exist (roughly)?",
+			"What interfaces are required (API/UI/integrations)?",
+			"What non-functional constraints matter most (security, performance, cost)?"
+		]
+	},
+	"compile_modes": {
+		"specific_answer_versions": {
+			"behavior": "Use specified versions for provided question_ids; use latest for all others.",
+			"on_missing_version": "422"
+		}
+	}
+}

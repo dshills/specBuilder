@@ -1,0 +1,1211 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Spec Builder Backend API",
+		"version": "0.1.0",
+		"description": "Backend API for Spec Builder. Go service is canonical source of truth for projects, questions, answers (versioned), compilation snapshots, issues, and exports."
+	},
+	"servers": [
+		{
+			"url": "http://localhost:8080"
+		}
+	],
+	"tags": [
+		{
+			"name": "Projects"
+		},
+		{
+			"name": "Questions"
+		},
+		{
+			"name": "Answers"
+		},
+		{
+			"name": "Compilation"
+		},
+		{
+			"name": "Snapshots"
+		},
+		{
+			"name": "Exports"
+		}
+	],
+	"paths": {
+		"/projects": {
+			"post": {
+				"tags": [
+					"Projects"
+				],
+				"operationId": "createProject",
+				"summary": "Create a new project",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateProjectRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Project created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CreateProjectResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/BadRequest"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}": {
+			"get": {
+				"tags": [
+					"Projects"
+				],
+				"operationId": "getProject",
+				"summary": "Get a project",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Project",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetProjectResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/questions": {
+			"get": {
+				"tags": [
+					"Questions"
+				],
+				"operationId": "listQuestions",
+				"summary": "List questions for a project",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					},
+					{
+						"name": "status",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"unanswered",
+								"answered",
+								"needs_review"
+							]
+						}
+					},
+					{
+						"name": "tag",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Questions list",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ListQuestionsResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/next-questions": {
+			"post": {
+				"tags": [
+					"Questions"
+				],
+				"operationId": "generateNextQuestions",
+				"summary": "Generate and persist the next set of questions via LLM planner/asker",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/NextQuestionsRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Generated questions",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NextQuestionsResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/BadRequest"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"422": {
+						"$ref": "#/components/responses/UnprocessableEntity"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/answers": {
+			"post": {
+				"tags": [
+					"Answers"
+				],
+				"operationId": "submitAnswer",
+				"summary": "Submit or edit an answer (creates a new version). Optionally triggers compilation.",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/SubmitAnswerRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Answer stored; snapshot may be produced if compilation is triggered",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SubmitAnswerResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/BadRequest"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"$ref": "#/components/responses/Conflict"
+					},
+					"422": {
+						"$ref": "#/components/responses/UnprocessableEntity"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/compile": {
+			"post": {
+				"tags": [
+					"Compilation"
+				],
+				"operationId": "compileProjectSpec",
+				"summary": "Compile the project to a new immutable snapshot using latest (or specified) answer versions",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CompileRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Compilation result",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CompileResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/BadRequest"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"422": {
+						"$ref": "#/components/responses/UnprocessableEntity"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/snapshots": {
+			"get": {
+				"tags": [
+					"Snapshots"
+				],
+				"operationId": "listSnapshots",
+				"summary": "List snapshots for a project (most recent first)",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 200,
+							"default": 50
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Snapshots list",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ListSnapshotsResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/snapshots/{snapshotId}": {
+			"get": {
+				"tags": [
+					"Snapshots"
+				],
+				"operationId": "getSnapshot",
+				"summary": "Get a snapshot and its issues",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					},
+					{
+						"$ref": "#/components/parameters/SnapshotId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Snapshot details",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetSnapshotResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/snapshots/{snapshotId}/diff/{otherSnapshotId}": {
+			"get": {
+				"tags": [
+					"Snapshots"
+				],
+				"operationId": "diffSnapshots",
+				"summary": "Get a structured diff between two snapshots (RFC 6902 JSON Patch, from snapshotId -> otherSnapshotId)",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					},
+					{
+						"$ref": "#/components/parameters/SnapshotId"
+					},
+					{
+						"$ref": "#/components/parameters/OtherSnapshotId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Structured diff",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DiffResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					}
+				}
+			}
+		},
+		"/projects/{projectId}/export": {
+			"post": {
+				"tags": [
+					"Exports"
+				],
+				"operationId": "exportAiCoderPack",
+				"summary": "Generate an AI Coder Pack zip for a specific snapshot and return a download URL",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ProjectId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ExportRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Export ready",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ExportResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/BadRequest"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"422": {
+						"$ref": "#/components/responses/UnprocessableEntity"
+					}
+				}
+			}
+		},
+		"/downloads/{token}": {
+			"get": {
+				"tags": [
+					"Exports"
+				],
+				"operationId": "downloadExport",
+				"summary": "Download a previously generated export",
+				"parameters": [
+					{
+						"name": "token",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"minLength": 8
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Zip file",
+						"content": {
+							"application/zip": {
+								"schema": {
+									"type": "string",
+									"format": "binary"
+								}
+							}
+						}
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					}
+				}
+			}
+		}
+	},
+	"components": {
+		"parameters": {
+			"ProjectId": {
+				"name": "projectId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"$ref": "#/components/schemas/UUID"
+				}
+			},
+			"SnapshotId": {
+				"name": "snapshotId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"$ref": "#/components/schemas/UUID"
+				}
+			},
+			"OtherSnapshotId": {
+				"name": "otherSnapshotId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"$ref": "#/components/schemas/UUID"
+				}
+			}
+		},
+		"responses": {
+			"BadRequest": {
+				"description": "Bad request",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"NotFound": {
+				"description": "Not found",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"Conflict": {
+				"description": "Conflict",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"UnprocessableEntity": {
+				"description": "Unprocessable entity (e.g., validation failure, invalid LLM output, schema mismatch)",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			}
+		},
+		"schemas": {
+			"UUID": {
+				"type": "string",
+				"format": "uuid"
+			},
+			"Timestamp": {
+				"type": "string",
+				"format": "date-time"
+			},
+			"JSONValue": {
+				"description": "Any valid JSON value.",
+				"oneOf": [
+					{
+						"type": "string"
+					},
+					{
+						"type": "number"
+					},
+					{
+						"type": "integer"
+					},
+					{
+						"type": "boolean"
+					},
+					{
+						"type": "object",
+						"additionalProperties": {
+							"$ref": "#/components/schemas/JSONValue"
+						}
+					},
+					{
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/JSONValue"
+						}
+					},
+					{
+						"type": "null"
+					}
+				]
+			},
+			"ErrorResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"error",
+					"message"
+				],
+				"properties": {
+					"error": {
+						"type": "string",
+						"minLength": 1
+					},
+					"message": {
+						"type": "string",
+						"minLength": 1
+					},
+					"details": {
+						"type": "object",
+						"additionalProperties": true
+					}
+				}
+			},
+			"Project": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"name",
+					"created_at",
+					"updated_at"
+				],
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"created_at": {
+						"$ref": "#/components/schemas/Timestamp"
+					},
+					"updated_at": {
+						"$ref": "#/components/schemas/Timestamp"
+					}
+				}
+			},
+			"QuestionType": {
+				"type": "string",
+				"enum": [
+					"single",
+					"multi",
+					"freeform"
+				]
+			},
+			"QuestionStatus": {
+				"type": "string",
+				"enum": [
+					"unanswered",
+					"answered",
+					"needs_review"
+				]
+			},
+			"Question": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"project_id",
+					"text",
+					"type",
+					"tags",
+					"priority",
+					"spec_paths",
+					"status",
+					"created_at"
+				],
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"project_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"text": {
+						"type": "string",
+						"minLength": 1
+					},
+					"type": {
+						"$ref": "#/components/schemas/QuestionType"
+					},
+					"options": {
+						"oneOf": [
+							{
+								"type": "array",
+								"items": {
+									"type": "string",
+									"minLength": 1
+								},
+								"minItems": 1
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						},
+						"default": []
+					},
+					"priority": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 1000
+					},
+					"spec_paths": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						},
+						"default": []
+					},
+					"status": {
+						"$ref": "#/components/schemas/QuestionStatus"
+					},
+					"created_at": {
+						"$ref": "#/components/schemas/Timestamp"
+					}
+				}
+			},
+			"Answer": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"project_id",
+					"question_id",
+					"value",
+					"version",
+					"supersedes",
+					"created_at"
+				],
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"project_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"question_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"value": {
+						"$ref": "#/components/schemas/JSONValue"
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 1
+					},
+					"supersedes": {
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/UUID"
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"created_at": {
+						"$ref": "#/components/schemas/Timestamp"
+					}
+				}
+			},
+			"CompilerConfig": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"model",
+					"prompt_version",
+					"temperature"
+				],
+				"properties": {
+					"model": {
+						"type": "string",
+						"minLength": 1
+					},
+					"prompt_version": {
+						"type": "string",
+						"minLength": 1
+					},
+					"temperature": {
+						"type": "number",
+						"minimum": 0,
+						"maximum": 2
+					},
+					"seed": {
+						"oneOf": [
+							{
+								"type": "integer"
+							},
+							{
+								"type": "null"
+							}
+						],
+						"default": null
+					}
+				}
+			},
+			"SpecSnapshot": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"project_id",
+					"spec",
+					"created_at",
+					"derived_from",
+					"compiler"
+				],
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"project_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"spec": {
+						"type": "object",
+						"additionalProperties": true
+					},
+					"created_at": {
+						"$ref": "#/components/schemas/Timestamp"
+					},
+					"derived_from": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "integer",
+							"minimum": 1
+						}
+					},
+					"compiler": {
+						"$ref": "#/components/schemas/CompilerConfig"
+					}
+				}
+			},
+			"IssueType": {
+				"type": "string",
+				"enum": [
+					"conflict",
+					"missing",
+					"assumption"
+				]
+			},
+			"IssueSeverity": {
+				"type": "string",
+				"enum": [
+					"info",
+					"warn",
+					"error"
+				]
+			},
+			"Issue": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"project_id",
+					"snapshot_id",
+					"type",
+					"severity",
+					"message",
+					"related_spec_paths",
+					"related_question_ids",
+					"created_at"
+				],
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"project_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"snapshot_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"type": {
+						"$ref": "#/components/schemas/IssueType"
+					},
+					"severity": {
+						"$ref": "#/components/schemas/IssueSeverity"
+					},
+					"message": {
+						"type": "string",
+						"minLength": 1
+					},
+					"related_spec_paths": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						},
+						"default": []
+					},
+					"related_question_ids": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/UUID"
+						},
+						"default": []
+					},
+					"created_at": {
+						"$ref": "#/components/schemas/Timestamp"
+					}
+				}
+			},
+			"CreateProjectRequest": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"name"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			},
+			"CreateProjectResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"project_id"
+				],
+				"properties": {
+					"project_id": {
+						"$ref": "#/components/schemas/UUID"
+					}
+				}
+			},
+			"GetProjectResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"project",
+					"latest_snapshot_id"
+				],
+				"properties": {
+					"project": {
+						"$ref": "#/components/schemas/Project"
+					},
+					"latest_snapshot_id": {
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/UUID"
+							},
+							{
+								"type": "null"
+							}
+						]
+					}
+				}
+			},
+			"ListQuestionsResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"questions"
+				],
+				"properties": {
+					"questions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Question"
+						}
+					}
+				}
+			},
+			"NextQuestionsRequest": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"count"
+				],
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 50
+					}
+				}
+			},
+			"NextQuestionsResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"questions"
+				],
+				"properties": {
+					"questions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Question"
+						}
+					}
+				}
+			},
+			"SubmitAnswerRequest": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"question_id",
+					"value"
+				],
+				"properties": {
+					"question_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"value": {
+						"$ref": "#/components/schemas/JSONValue"
+					},
+					"compile": {
+						"type": "boolean",
+						"default": true
+					}
+				}
+			},
+			"SubmitAnswerResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"answer_id",
+					"snapshot_id",
+					"issues"
+				],
+				"properties": {
+					"answer_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"snapshot_id": {
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/UUID"
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"issues": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Issue"
+						},
+						"default": []
+					}
+				}
+			},
+			"CompileMode": {
+				"type": "string",
+				"enum": [
+					"latest_answers",
+					"specific_answer_versions"
+				]
+			},
+			"CompileRequest": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"mode"
+				],
+				"properties": {
+					"mode": {
+						"$ref": "#/components/schemas/CompileMode"
+					},
+					"answer_versions": {
+						"description": "Map of question_id -> answer_version (only used when mode=specific_answer_versions)",
+						"oneOf": [
+							{
+								"type": "object",
+								"additionalProperties": {
+									"type": "integer",
+									"minimum": 1
+								}
+							},
+							{
+								"type": "null"
+							}
+						],
+						"default": null
+					}
+				}
+			},
+			"CompileResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"snapshot_id",
+					"issues"
+				],
+				"properties": {
+					"snapshot_id": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"issues": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Issue"
+						},
+						"default": []
+					}
+				}
+			},
+			"ListSnapshotsResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"snapshots"
+				],
+				"properties": {
+					"snapshots": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/SpecSnapshot"
+						}
+					}
+				}
+			},
+			"GetSnapshotResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"snapshot",
+					"issues"
+				],
+				"properties": {
+					"snapshot": {
+						"$ref": "#/components/schemas/SpecSnapshot"
+					},
+					"issues": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Issue"
+						},
+						"default": []
+					}
+				}
+			},
+			"DiffResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"patch"
+				],
+				"properties": {
+					"patch": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/JsonPatchOp"
+						}
+					}
+				}
+			},
+			"JsonPatchOp": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"op",
+					"path"
+				],
+				"properties": {
+					"op": {
+						"type": "string",
+						"enum": [
+							"add",
+							"remove",
+							"replace",
+							"move",
+							"copy",
+							"test"
+						]
+					},
+					"path": {
+						"type": "string",
+						"minLength": 1
+					},
+					"from": {
+						"type": "string"
+					},
+					"value": {
+						"$ref": "#/components/schemas/JSONValue"
+					}
+				}
+			},
+			"ExportRequest": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"snapshot_id"
+				],
+				"properties": {
+					"snapshot_id": {
+						"$ref": "#/components/schemas/UUID"
+					}
+				}
+			},
+			"ExportResponse": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"download_url"
+				],
+				"properties": {
+					"download_url": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			}
+		}
+	}
+}

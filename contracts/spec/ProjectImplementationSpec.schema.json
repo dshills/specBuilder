@@ -1,0 +1,1077 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://specbuilder.local/schemas/ProjectImplementationSpec.schema.json",
+	"title": "ProjectImplementationSpec",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"product",
+		"scope",
+		"personas",
+		"requirements",
+		"workflows",
+		"data_model",
+		"api",
+		"ui",
+		"non_functionals",
+		"acceptance",
+		"plan",
+		"trace"
+	],
+	"properties": {
+		"product": {
+			"$ref": "#/$defs/Product"
+		},
+		"scope": {
+			"$ref": "#/$defs/Scope"
+		},
+		"personas": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"$ref": "#/$defs/Persona"
+			}
+		},
+		"requirements": {
+			"$ref": "#/$defs/Requirements"
+		},
+		"workflows": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"$ref": "#/$defs/Workflow"
+			}
+		},
+		"data_model": {
+			"$ref": "#/$defs/DataModel"
+		},
+		"api": {
+			"$ref": "#/$defs/API"
+		},
+		"ui": {
+			"$ref": "#/$defs/UI"
+		},
+		"integrations": {
+			"type": "array",
+			"items": {
+				"$ref": "#/$defs/Integration"
+			},
+			"default": []
+		},
+		"non_functionals": {
+			"$ref": "#/$defs/NonFunctionals"
+		},
+		"observability": {
+			"$ref": "#/$defs/Observability"
+		},
+		"security_privacy": {
+			"$ref": "#/$defs/SecurityPrivacy"
+		},
+		"acceptance": {
+			"$ref": "#/$defs/Acceptance"
+		},
+		"plan": {
+			"$ref": "#/$defs/Plan"
+		},
+		"trace": {
+			"$ref": "#/$defs/Trace"
+		}
+	},
+	"$defs": {
+		"String1": {
+			"type": "string",
+			"minLength": 1
+		},
+		"Product": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"purpose",
+				"success_criteria"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"purpose": {
+					"$ref": "#/$defs/String1"
+				},
+				"success_criteria": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"non_goals": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Scope": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"in_scope",
+				"out_of_scope",
+				"assumptions"
+			],
+			"properties": {
+				"in_scope": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"out_of_scope": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				},
+				"assumptions": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Persona": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"description",
+				"goals"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				},
+				"goals": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"pain_points": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Requirements": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"functional",
+				"non_functional"
+			],
+			"properties": {
+				"functional": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/FunctionalRequirement"
+					}
+				},
+				"non_functional": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/NonFunctionalRequirement"
+					}
+				}
+			}
+		},
+		"FunctionalRequirement": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"title",
+				"description",
+				"priority",
+				"acceptance_criteria"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"title": {
+					"$ref": "#/$defs/String1"
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				},
+				"priority": {
+					"type": "string",
+					"enum": [
+						"must",
+						"should",
+						"could",
+						"wont"
+					]
+				},
+				"acceptance_criteria": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"dependencies": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				},
+				"notes": {
+					"type": "string",
+					"default": ""
+				}
+			}
+		},
+		"NonFunctionalRequirement": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"title",
+				"description",
+				"metric_or_constraint"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"title": {
+					"$ref": "#/$defs/String1"
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				},
+				"metric_or_constraint": {
+					"$ref": "#/$defs/String1"
+				},
+				"notes": {
+					"type": "string",
+					"default": ""
+				}
+			}
+		},
+		"Workflow": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"name",
+				"actors",
+				"preconditions",
+				"steps",
+				"postconditions"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"actors": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"preconditions": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				},
+				"steps": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/WorkflowStep"
+					}
+				},
+				"alternate_flows": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/AlternateFlow"
+					},
+					"default": []
+				},
+				"error_handling": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				},
+				"postconditions": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				}
+			}
+		},
+		"WorkflowStep": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"n",
+				"action",
+				"system_response"
+			],
+			"properties": {
+				"n": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"action": {
+					"$ref": "#/$defs/String1"
+				},
+				"system_response": {
+					"$ref": "#/$defs/String1"
+				}
+			}
+		},
+		"AlternateFlow": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"trigger",
+				"steps"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"trigger": {
+					"$ref": "#/$defs/String1"
+				},
+				"steps": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/WorkflowStep"
+					}
+				}
+			}
+		},
+		"DataModel": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"entities"
+			],
+			"properties": {
+				"entities": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Entity"
+					}
+				},
+				"relationships": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/Relationship"
+					},
+					"default": []
+				}
+			}
+		},
+		"Entity": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"description",
+				"fields"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				},
+				"fields": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Field"
+					}
+				},
+				"indexes": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/Index"
+					},
+					"default": []
+				},
+				"example_records": {
+					"type": "array",
+					"items": {
+						"type": "object"
+					},
+					"default": []
+				}
+			}
+		},
+		"Field": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"type",
+				"required"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"type": {
+					"$ref": "#/$defs/String1"
+				},
+				"required": {
+					"type": "boolean"
+				},
+				"constraints": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				},
+				"description": {
+					"type": "string",
+					"default": ""
+				}
+			}
+		},
+		"Index": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"fields",
+				"unique"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"fields": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"unique": {
+					"type": "boolean"
+				}
+			}
+		},
+		"Relationship": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"from",
+				"to",
+				"type",
+				"description"
+			],
+			"properties": {
+				"from": {
+					"$ref": "#/$defs/String1"
+				},
+				"to": {
+					"$ref": "#/$defs/String1"
+				},
+				"type": {
+					"type": "string",
+					"enum": [
+						"one_to_one",
+						"one_to_many",
+						"many_to_many"
+					]
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				}
+			}
+		},
+		"API": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"style",
+				"auth",
+				"endpoints",
+				"errors"
+			],
+			"properties": {
+				"style": {
+					"type": "string",
+					"enum": [
+						"rest",
+						"rpc",
+						"graphql",
+						"event_driven",
+						"mixed"
+					]
+				},
+				"auth": {
+					"$ref": "#/$defs/AuthModel"
+				},
+				"endpoints": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Endpoint"
+					}
+				},
+				"events": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/Event"
+					},
+					"default": []
+				},
+				"errors": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/ErrorShape"
+					}
+				}
+			}
+		},
+		"AuthModel": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"scheme",
+				"authorization"
+			],
+			"properties": {
+				"scheme": {
+					"type": "string",
+					"enum": [
+						"none",
+						"api_key",
+						"bearer_jwt",
+						"oauth2",
+						"session_cookie",
+						"custom"
+					]
+				},
+				"authorization": {
+					"$ref": "#/$defs/String1"
+				},
+				"roles": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Endpoint": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"method",
+				"path",
+				"summary",
+				"request",
+				"responses"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"method": {
+					"type": "string",
+					"enum": [
+						"GET",
+						"POST",
+						"PUT",
+						"PATCH",
+						"DELETE"
+					]
+				},
+				"path": {
+					"$ref": "#/$defs/String1"
+				},
+				"summary": {
+					"$ref": "#/$defs/String1"
+				},
+				"request": {
+					"type": "object",
+					"additionalProperties": true,
+					"default": {}
+				},
+				"responses": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Response"
+					}
+				},
+				"idempotency": {
+					"type": "string",
+					"enum": [
+						"not_applicable",
+						"required",
+						"recommended"
+					],
+					"default": "not_applicable"
+				}
+			}
+		},
+		"Response": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"status",
+				"body"
+			],
+			"properties": {
+				"status": {
+					"type": "integer",
+					"minimum": 100,
+					"maximum": 599
+				},
+				"body": {
+					"type": "object",
+					"additionalProperties": true
+				}
+			}
+		},
+		"Event": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"payload_schema_description"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"payload_schema_description": {
+					"$ref": "#/$defs/String1"
+				}
+			}
+		},
+		"ErrorShape": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"code",
+				"message",
+				"http_status"
+			],
+			"properties": {
+				"code": {
+					"$ref": "#/$defs/String1"
+				},
+				"message": {
+					"$ref": "#/$defs/String1"
+				},
+				"http_status": {
+					"type": "integer",
+					"minimum": 100,
+					"maximum": 599
+				}
+			}
+		},
+		"UI": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"screens"
+			],
+			"properties": {
+				"screens": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Screen"
+					}
+				},
+				"global_states": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Screen": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"name",
+				"purpose",
+				"states",
+				"validations"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"purpose": {
+					"$ref": "#/$defs/String1"
+				},
+				"states": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"validations": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Integration": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"direction",
+				"description"
+			],
+			"properties": {
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"direction": {
+					"type": "string",
+					"enum": [
+						"inbound",
+						"outbound",
+						"bidirectional"
+					]
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				},
+				"constraints": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"NonFunctionals": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"performance",
+				"reliability",
+				"security",
+				"privacy",
+				"cost"
+			],
+			"properties": {
+				"performance": {
+					"$ref": "#/$defs/String1"
+				},
+				"reliability": {
+					"$ref": "#/$defs/String1"
+				},
+				"security": {
+					"$ref": "#/$defs/String1"
+				},
+				"privacy": {
+					"$ref": "#/$defs/String1"
+				},
+				"cost": {
+					"$ref": "#/$defs/String1"
+				},
+				"other": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Observability": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"logging",
+				"metrics",
+				"tracing",
+				"audit"
+			],
+			"properties": {
+				"logging": {
+					"$ref": "#/$defs/String1"
+				},
+				"metrics": {
+					"$ref": "#/$defs/String1"
+				},
+				"tracing": {
+					"$ref": "#/$defs/String1"
+				},
+				"audit": {
+					"$ref": "#/$defs/String1"
+				}
+			}
+		},
+		"SecurityPrivacy": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"data_classification",
+				"retention",
+				"access_controls"
+			],
+			"properties": {
+				"data_classification": {
+					"$ref": "#/$defs/String1"
+				},
+				"retention": {
+					"$ref": "#/$defs/String1"
+				},
+				"access_controls": {
+					"$ref": "#/$defs/String1"
+				},
+				"threats_and_mitigations": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Acceptance": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"definition_of_done",
+				"test_cases"
+			],
+			"properties": {
+				"definition_of_done": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"test_cases": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/TestCase"
+					}
+				}
+			}
+		},
+		"TestCase": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"name",
+				"steps",
+				"expected"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"steps": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				},
+				"expected": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				}
+			}
+		},
+		"Plan": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"milestones",
+				"tasks"
+			],
+			"properties": {
+				"milestones": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Milestone"
+					}
+				},
+				"tasks": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/Task"
+					}
+				}
+			}
+		},
+		"Milestone": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"name",
+				"goals"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"name": {
+					"$ref": "#/$defs/String1"
+				},
+				"goals": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"$ref": "#/$defs/String1"
+					}
+				}
+			}
+		},
+		"Task": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"milestone_id",
+				"title",
+				"description",
+				"depends_on"
+			],
+			"properties": {
+				"id": {
+					"$ref": "#/$defs/String1"
+				},
+				"milestone_id": {
+					"$ref": "#/$defs/String1"
+				},
+				"title": {
+					"$ref": "#/$defs/String1"
+				},
+				"description": {
+					"$ref": "#/$defs/String1"
+				},
+				"depends_on": {
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/String1"
+					},
+					"default": []
+				}
+			}
+		},
+		"Trace": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"spec_path_to_sources"
+			],
+			"properties": {
+				"spec_path_to_sources": {
+					"type": "object",
+					"additionalProperties": {
+						"$ref": "#/$defs/TraceSources"
+					}
+				}
+			}
+		},
+		"TraceSources": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"$ref": "#/$defs/TraceSource"
+			}
+		},
+		"TraceSource": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"question_id",
+				"answer_id",
+				"answer_version"
+			],
+			"properties": {
+				"question_id": {
+					"$ref": "#/$defs/String1"
+				},
+				"answer_id": {
+					"$ref": "#/$defs/String1"
+				},
+				"answer_version": {
+					"type": "integer",
+					"minimum": 1
+				}
+			}
+		}
+	}
+}

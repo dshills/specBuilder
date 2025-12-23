@@ -1,0 +1,64 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://specbuilder.local/schemas/Trace.schema.json",
+	"title": "Trace",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"spec_path_to_sources"
+	],
+	"properties": {
+		"spec_path_to_sources": {
+			"type": "object",
+			"description": "Map of spec JSON-pointer-like paths to one or more provenance sources.",
+			"propertyNames": {
+				"type": "string",
+				"minLength": 1,
+				"pattern": "^/.*"
+			},
+			"additionalProperties": {
+				"$ref": "#/$defs/TraceSources"
+			}
+		}
+	},
+	"$defs": {
+		"TraceSources": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"$ref": "#/$defs/TraceSource"
+			}
+		},
+		"TraceSource": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"question_id",
+				"answer_id",
+				"answer_version"
+			],
+			"properties": {
+				"question_id": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Backend question UUID (string form)."
+				},
+				"answer_id": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Backend answer UUID (string form)."
+				},
+				"answer_version": {
+					"type": "integer",
+					"minimum": 1,
+					"description": "Monotonic version number for the answer within its question."
+				},
+				"notes": {
+					"type": "string",
+					"default": "",
+					"description": "Optional human-readable note (not required for correctness)."
+				}
+			}
+		}
+	}
+}

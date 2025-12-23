@@ -1,0 +1,42 @@
+# Build artifacts
+backend/bin/
+backend/specbuilder
+frontend/build/
+frontend/dist/
+
+# Dependencies
+frontend/node_modules/
+
+# Exports (generated at runtime)
+exports/
+
+# Database
+backend/data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+*.cover
+*.out
+
+# Logs
+*.log
