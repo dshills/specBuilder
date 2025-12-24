@@ -1,0 +1,20 @@
+# Air live reload
+tmp/
+build-errors.log
+
+# Binary
+main
+server
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test
+coverage.out
+*.test
+
+# OS
+.DS_Store
