@@ -55,27 +55,21 @@ func main() {
 		log.Fatalf("Failed to initialize validator: %v", err)
 	}
 
-	// Initialize LLM client (optional - server works without it for basic CRUD)
+	// Initialize LLM factory (optional - server works without it for basic CRUD)
+	// Supports: GEMINI_API_KEY (preferred), OPENAI_API_KEY (fallback)
 	var compilerSvc *compiler.Service
-	openAIKey := os.Getenv("OPENAI_API_KEY")
-	if openAIKey != "" {
-		openAIModel := os.Getenv("OPENAI_MODEL")
-		if openAIModel == "" {
-			openAIModel = "gpt-4o" // Default model
-		}
 
-		llmClient := llm.NewOpenAIClient(openAIKey, openAIModel)
-
+	llmFactory := llm.NewFactory()
+	if llmFactory.Available() {
 		// Load spec schema for compiler
 		specSchema, err := loadSpecSchema()
 		if err != nil {
 			log.Fatalf("Failed to load spec schema: %v", err)
 		}
-
-		compilerSvc = compiler.NewService(llmClient, val, specSchema)
-		log.Printf("LLM client initialized (model: %s)", openAIModel)
+		compilerSvc = compiler.NewService(llmFactory, val, specSchema)
+		log.Printf("LLM factory initialized (default: %s/%s)", llmFactory.DefaultProvider(), llmFactory.DefaultModel())
 	} else {
-		log.Println("Warning: OPENAI_API_KEY not set - compilation endpoints will be disabled")
+		log.Println("Warning: No LLM API key set (GEMINI_API_KEY or OPENAI_API_KEY) - compilation endpoints will be disabled")
 	}
 
 	// Initialize API handler

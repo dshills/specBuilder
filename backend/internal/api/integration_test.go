@@ -18,17 +18,17 @@ import (
 )
 
 // setupIntegrationTest creates a fully wired handler with mock dependencies.
-func setupIntegrationTest(t *testing.T, llmResponse string) (*Handler, *mock.Repository, *llm.MockClient) {
+func setupIntegrationTest(t *testing.T, llmResponse string) (*Handler, *mock.Repository, *llm.MockFactory) {
 	t.Helper()
 	repo := mock.New()
-	mockClient := llm.NewMockClient(llmResponse)
+	mockFactory := llm.NewMockFactory(llmResponse)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	compilerSvc := compiler.NewService(mockClient, val, `{"type": "object"}`)
+	compilerSvc := compiler.NewService(mockFactory, val, `{"type": "object"}`)
 	handler := NewHandler(repo, compilerSvc)
-	return handler, repo, mockClient
+	return handler, repo, mockFactory
 }
 
 // TestIntegration_FullSpecBuildingFlow tests the complete flow of building a spec.

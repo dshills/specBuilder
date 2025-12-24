@@ -18,6 +18,23 @@ Rules:
 - If conflicts exist, prioritize questions that resolve conflicts.
 - Each suggestion must include spec_paths it affects.
 
+Tag vocabulary (use exactly these values):
+- "seed": ONLY for first 2-3 questions when no answers exist yet (product name, purpose, MVP scope)
+- "product": product identity, success criteria, non-goals
+- "scope": in/out of scope, assumptions
+- "personas": target users, their goals and pain points
+- "requirements": functional and non-functional requirements
+- "workflows": user journeys, step-by-step processes
+- "data_model": entities, fields, relationships
+- "api": endpoints, auth, error handling
+- "ui": screens, states, validations
+- "non_functionals": performance, reliability, security, privacy, cost
+- "acceptance": definition of done, test cases
+- "plan": milestones, tasks, dependencies
+- "security": authentication, authorization, data protection
+
+Each suggestion MUST have 1-3 tags. Use "seed" sparingly—only when bootstrapping an empty spec.
+
 PlannerOutput JSON schema (informal):
 {
   "rationale": "string (brief)",

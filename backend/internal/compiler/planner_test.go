@@ -35,12 +35,12 @@ func TestPlan(t *testing.T) {
 		]
 	}`
 
-	mockClient := llm.NewMockClient(mockResponse)
+	mockFactory := llm.NewMockFactory(mockResponse)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{
@@ -94,12 +94,12 @@ func TestPlanWithExistingContext(t *testing.T) {
 		"suggestions": []
 	}`
 
-	mockClient := llm.NewMockClient(mockResponse)
+	mockFactory := llm.NewMockFactory(mockResponse)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{
@@ -146,18 +146,18 @@ func TestPlanWithExistingContext(t *testing.T) {
 	}
 
 	// Verify the mock client received the request
-	if mockClient.CallCount != 1 {
-		t.Errorf("Plan() call count = %d, want 1", mockClient.CallCount)
+	if mockFactory.Client.CallCount != 1 {
+		t.Errorf("Plan() call count = %d, want 1", mockFactory.Client.CallCount)
 	}
 }
 
 func TestPlanInvalidJSON(t *testing.T) {
-	mockClient := llm.NewMockClient(`not valid json`)
+	mockFactory := llm.NewMockFactory(`not valid json`)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{
@@ -199,12 +199,12 @@ func TestAsk(t *testing.T) {
 		]
 	}`
 
-	mockClient := llm.NewMockClient(mockResponse)
+	mockFactory := llm.NewMockFactory(mockResponse)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{
@@ -265,12 +265,12 @@ func TestAsk(t *testing.T) {
 func TestAskEmptyOutput(t *testing.T) {
 	mockResponse := `{"questions": []}`
 
-	mockClient := llm.NewMockClient(mockResponse)
+	mockFactory := llm.NewMockFactory(mockResponse)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{
@@ -298,11 +298,12 @@ func TestAskEmptyOutput(t *testing.T) {
 func TestAskLLMError(t *testing.T) {
 	mockClient := llm.NewMockClient("")
 	mockClient.Error = llm.ErrRateLimit
+	mockFactory := llm.NewMockFactoryWithClient(mockClient)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{

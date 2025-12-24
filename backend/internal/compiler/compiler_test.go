@@ -14,12 +14,12 @@ import (
 
 func setupCompilerService(t *testing.T, mockResponse string) *Service {
 	t.Helper()
-	mockClient := llm.NewMockClient(mockResponse)
+	mockFactory := llm.NewMockFactory(mockResponse)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	return NewService(mockClient, val, `{"type": "object"}`)
+	return NewService(mockFactory, val, `{"type": "object"}`)
 }
 
 // testContext returns a context with timeout for tests.
@@ -129,11 +129,12 @@ func TestCompileWithCurrentSpec(t *testing.T) {
 func TestCompileLLMError(t *testing.T) {
 	mockClient := llm.NewMockClient("")
 	mockClient.Error = llm.ErrProviderError
+	mockFactory := llm.NewMockFactoryWithClient(mockClient)
 	val, err := validator.New()
 	if err != nil {
 		t.Fatalf("Failed to create validator: %v", err)
 	}
-	service := NewService(mockClient, val, `{}`)
+	service := NewService(mockFactory, val, `{}`)
 	ctx := testContext(t)
 
 	project := &domain.Project{

@@ -27,7 +27,14 @@ export function SpecViewer({
             onClick={onCompile}
             disabled={disabled || compiling}
           >
-            {compiling ? 'Compiling...' : 'Compile'}
+            {compiling ? (
+              <>
+                <span className="spinner" />
+                Compiling...
+              </>
+            ) : (
+              'Compile'
+            )}
           </button>
           {exportUrl && (
             <a
@@ -62,7 +69,13 @@ export function SpecViewer({
         </div>
       )}
 
-      {snapshot ? (
+      {compiling ? (
+        <div className="compile-loading">
+          <div className="compile-spinner" />
+          <p>Compiling specification...</p>
+          <p className="compile-hint">This may take 2-3 minutes</p>
+        </div>
+      ) : snapshot ? (
         <div className="spec-content">
           <div className="spec-meta">
             <span>

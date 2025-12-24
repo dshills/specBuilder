@@ -1,3 +1,4 @@
+export { ModelSelector } from './ModelSelector';
 export { ProjectSelector } from './ProjectSelector';
 export { QuestionCard } from './QuestionCard';
 export { QuestionList } from './QuestionList';

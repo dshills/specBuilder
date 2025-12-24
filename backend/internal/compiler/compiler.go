@@ -14,20 +14,25 @@ import (
 
 // Service handles spec compilation.
 type Service struct {
-	llmClient     llm.Client
+	factory       llm.ClientFactory
 	validator     *validator.Validator
 	promptVersion llm.PromptVersion
 	specSchema    string // JSON schema for ProjectImplementationSpec
 }
 
 // NewService creates a new compiler service.
-func NewService(client llm.Client, val *validator.Validator, specSchema string) *Service {
+func NewService(factory llm.ClientFactory, val *validator.Validator, specSchema string) *Service {
 	return &Service{
-		llmClient:     client,
+		factory:       factory,
 		validator:     val,
 		promptVersion: llm.PromptVersionV1,
 		specSchema:    specSchema,
 	}
+}
+
+// Factory returns the LLM factory.
+func (s *Service) Factory() llm.ClientFactory {
+	return s.factory
 }
 
 // QABundle represents a question-answer pair for compilation.
@@ -47,6 +52,8 @@ type CompileInput struct {
 	Project     *domain.Project
 	QABundles   []QABundle
 	CurrentSpec json.RawMessage // Previous spec if exists
+	Provider    llm.Provider    // Optional: override default provider
+	Model       string          // Optional: override default model
 }
 
 // CompileOutput holds compilation result.
@@ -65,6 +72,18 @@ type compilerResponse struct {
 
 // Compile compiles Q&A bundles into a spec.
 func (s *Service) Compile(ctx context.Context, input CompileInput) (*CompileOutput, error) {
+	// Create LLM client (use specified or default)
+	var llmClient llm.Client
+	var err error
+	if input.Provider != "" && input.Model != "" {
+		llmClient, err = s.factory.CreateClient(input.Provider, input.Model)
+	} else {
+		llmClient, err = s.factory.CreateDefaultClient()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("create llm client: %w", err)
+	}
+
 	// Load compiler prompt
 	prompt, err := llm.LoadPrompt("compiler", s.promptVersion)
 	if err != nil {
@@ -89,12 +108,11 @@ func (s *Service) Compile(ctx context.Context, input CompileInput) (*CompileOutp
 		return nil, fmt.Errorf("marshal project: %w", err)
 	}
 
-	// Render prompt
+	// Render prompt (schema is now embedded in prompt template for efficiency)
 	renderedPrompt := prompt.Render(map[string]string{
 		"PROJECT":           string(projectJSON),
 		"QA_BUNDLE_JSON":    string(qaBundleJSON),
 		"CURRENT_SPEC_JSON": string(currentSpec),
-		"PROJECT_IMPLEMENTATION_SPEC_SCHEMA_JSON": s.specSchema,
 	})
 
 	// Call LLM
@@ -106,7 +124,7 @@ func (s *Service) Compile(ctx context.Context, input CompileInput) (*CompileOutp
 		MaxTokens:   16000, // Large output for full spec
 	}
 
-	resp, err := s.llmClient.Complete(ctx, req)
+	resp, err := llmClient.Complete(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("llm call: %w", err)
 	}
@@ -135,7 +153,7 @@ func (s *Service) Compile(ctx context.Context, input CompileInput) (*CompileOutp
 		Trace:       compilerResp.Trace,
 		DerivedFrom: derivedFrom,
 		Compiler: domain.CompilerConfig{
-			Model:         s.llmClient.Model(),
+			Model:         llmClient.Model(),
 			PromptVersion: string(s.promptVersion),
 			Temperature:   0,
 		},
@@ -149,6 +167,11 @@ type ValidatorOutput struct {
 
 // Validate runs LLM-based validation on a compiled spec.
 func (s *Service) Validate(ctx context.Context, project *domain.Project, spec, trace json.RawMessage, qaBundles []QABundle) ([]domain.IssueDraft, error) {
+	llmClient, err := s.factory.CreateDefaultClient()
+	if err != nil {
+		return nil, fmt.Errorf("create llm client: %w", err)
+	}
+
 	prompt, err := llm.LoadPrompt("validator_llm_optional", s.promptVersion)
 	if err != nil {
 		return nil, fmt.Errorf("load prompt: %w", err)
@@ -183,7 +206,7 @@ func (s *Service) Validate(ctx context.Context, project *domain.Project, spec, t
 		MaxTokens:   4000,
 	}
 
-	resp, err := s.llmClient.Complete(ctx, req)
+	resp, err := llmClient.Complete(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("llm call: %w", err)
 	}

@@ -7,26 +7,37 @@ Inputs:
 - Project: {{PROJECT}}
 - Latest answers (with question metadata): {{QA_BUNDLE_JSON}}
 - Previous compiled spec (may be empty): {{CURRENT_SPEC_JSON}}
-- Spec JSON Schema (authoritative): {{PROJECT_IMPLEMENTATION_SPEC_SCHEMA_JSON}}
 
 Hard rules:
 - Output MUST be valid JSON.
 - Output MUST include "spec" and "trace".
-- "spec" MUST conform to the provided JSON Schema.
-- No placeholders like "TBD" unless absolutely required, and if used MUST create a corresponding missing Issue in the validator step.
-- You MUST preserve stable IDs where possible (requirements IDs, workflow IDs, etc.). If creating new IDs, use short stable identifiers (e.g., "FR-001", "WF-001", "TC-001", "MS-1", "T-001").
-- For each major section, ensure trace coverage exists for the populated fields.
+- No placeholders like "TBD" unless absolutely required.
+- Preserve stable IDs where possible. For new IDs, use short identifiers (e.g., "FR-001", "WF-001", "TC-001", "MS-1", "T-001").
+- Ensure trace coverage exists for populated fields.
 
-CompilerOutput JSON schema (informal):
+ProjectImplementationSpec structure (all sections required):
 {
-  "spec": { ... ProjectImplementationSpec ... },
-  "trace": {
-    "spec_path_to_sources": {
-      "/path/in/spec": [
-        { "question_id": "string", "answer_id": "string", "answer_version": integer }
-      ]
-    }
-  }
+  "product": { "name": string, "purpose": string, "success_criteria": [string], "non_goals"?: [string] },
+  "scope": { "in_scope": [string], "out_of_scope": [string], "assumptions": [string] },
+  "personas": [{ "name": string, "description": string, "goals": [string], "pain_points"?: [string] }],
+  "requirements": {
+    "functional": [{ "id": string, "title": string, "description": string, "priority": "must"|"should"|"could"|"wont", "acceptance_criteria": [string], "dependencies"?: [string] }],
+    "non_functional": [{ "id": string, "title": string, "description": string, "metric_or_constraint": string }]
+  },
+  "workflows": [{ "id": string, "name": string, "actors": [string], "preconditions": [string], "steps": [{"n": int, "action": string, "system_response": string}], "postconditions": [string], "alternate_flows"?: [...], "error_handling"?: [string] }],
+  "data_model": { "entities": [{ "name": string, "description": string, "fields": [{"name": string, "type": string, "required": bool, "constraints"?: [string]}] }], "relationships"?: [{"from": string, "to": string, "type": "one_to_one"|"one_to_many"|"many_to_many", "description": string}] },
+  "api": { "style": "rest"|"rpc"|"graphql"|"event_driven"|"mixed", "auth": {"scheme": "none"|"api_key"|"bearer_jwt"|"oauth2"|"session_cookie"|"custom", "authorization": string, "roles"?: [string]}, "endpoints": [{"id": string, "method": "GET"|"POST"|"PUT"|"PATCH"|"DELETE", "path": string, "summary": string, "request": {}, "responses": [{"status": int, "body": {}}]}], "errors": [{"code": string, "message": string, "http_status": int}] },
+  "ui": { "screens": [{ "id": string, "name": string, "purpose": string, "states": [string], "validations": [string] }] },
+  "non_functionals": { "performance": string, "reliability": string, "security": string, "privacy": string, "cost": string },
+  "acceptance": { "definition_of_done": [string], "test_cases": [{"id": string, "name": string, "steps": [string], "expected": [string]}] },
+  "plan": { "milestones": [{"id": string, "name": string, "goals": [string]}], "tasks": [{"id": string, "milestone_id": string, "title": string, "description": string, "depends_on": [string]}] },
+  "trace": { "spec_path_to_sources": { "/path/in/spec": [{"question_id": string, "answer_id": string, "answer_version": int}] } }
+}
+
+CompilerOutput format:
+{
+  "spec": { ... ProjectImplementationSpec as above ... },
+  "trace": { "spec_path_to_sources": { "/product/name": [{"question_id": "...", "answer_id": "...", "answer_version": 1}], ... } }
 }
 
 Return ONLY the JSON.

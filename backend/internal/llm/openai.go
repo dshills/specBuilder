@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -74,6 +75,7 @@ func usesCompletionTokens(model string) bool {
 
 // Complete sends a completion request to OpenAI.
 func (c *OpenAIClient) Complete(ctx context.Context, req Request) (*Response, error) {
+	log.Printf("OpenAI: starting request to model %s", c.model)
 	messages := make([]openAIMessage, len(req.Messages))
 	for i, m := range req.Messages {
 		messages[i] = openAIMessage{Role: m.Role, Content: m.Content}
@@ -106,16 +108,20 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (*Response, er
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 
+	log.Printf("OpenAI: sending HTTP request (prompt size: %d bytes)", len(body))
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
+		log.Printf("OpenAI: HTTP error: %v", err)
 		return nil, fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
+	log.Printf("OpenAI: received response status %d", resp.StatusCode)
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}
+	log.Printf("OpenAI: response body size: %d bytes", len(respBody))
 
 	if resp.StatusCode == 429 {
 		return nil, ErrRateLimit
@@ -138,4 +144,136 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (*Response, er
 		Content: oaiResp.Choices[0].Message.Content,
 		Model:   oaiResp.Model,
 	}, nil
+}
+
+const openAIModelsEndpoint = "https://api.openai.com/v1/models"
+
+// OpenAIModelsResponse represents the response from the models endpoint.
+type OpenAIModelsResponse struct {
+	Data []struct {
+		ID      string `json:"id"`
+		Object  string `json:"object"`
+		OwnedBy string `json:"owned_by"`
+	} `json:"data"`
+}
+
+// FetchOpenAIModels fetches available models from the OpenAI API.
+func FetchOpenAIModels(apiKey string) ([]ModelInfo, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	req, err := http.NewRequest("GET", openAIModelsEndpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch models: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("fetch models failed: %s", string(body[:min(200, len(body))]))
+	}
+
+	var modelsResp OpenAIModelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&modelsResp); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	models := make([]ModelInfo, 0)
+
+	for _, m := range modelsResp.Data {
+		// Check if it's a chat-capable model
+		if isOpenAIChatModel(m.ID) {
+			models = append(models, ModelInfo{
+				ID:       m.ID,
+				Name:     formatOpenAIModelName(m.ID),
+				Provider: ProviderOpenAI,
+			})
+		}
+	}
+
+	return models, nil
+}
+
+// isOpenAIChatModel returns true if the model ID indicates a chat-capable model.
+func isOpenAIChatModel(id string) bool {
+	m := strings.ToLower(id)
+
+	// Exclude non-chat models
+	excludePrefixes := []string{
+		"whisper",        // Audio transcription
+		"tts",            // Text-to-speech
+		"dall-e",         // Image generation
+		"text-embedding", // Embeddings
+		"embedding",      // Embeddings
+		"moderation",     // Content moderation
+		"babbage",        // Legacy completion
+		"davinci",        // Legacy completion
+		"curie",          // Legacy completion
+		"ada",            // Legacy/embeddings
+		"code-",          // Legacy code models
+		"text-",          // Legacy text models
+		"ft:",            // Fine-tuned models
+		"codex",          // Legacy
+	}
+
+	for _, prefix := range excludePrefixes {
+		if strings.HasPrefix(m, prefix) {
+			return false
+		}
+	}
+
+	// Include chat-capable model patterns
+	chatPrefixes := []string{
+		"gpt-",     // GPT models
+		"o1",       // o1 reasoning models
+		"o3",       // o3 reasoning models
+		"o4",       // Future o4 models
+		"chatgpt-", // ChatGPT models
+	}
+
+	for _, prefix := range chatPrefixes {
+		if strings.HasPrefix(m, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// formatOpenAIModelName creates a display name from a model ID.
+func formatOpenAIModelName(id string) string {
+	// Special cases for well-known models
+	wellKnown := map[string]string{
+		"gpt-4o":            "GPT-4o",
+		"gpt-4o-mini":       "GPT-4o Mini",
+		"gpt-4-turbo":       "GPT-4 Turbo",
+		"gpt-4":             "GPT-4",
+		"gpt-3.5-turbo":     "GPT-3.5 Turbo",
+		"o1":                "o1",
+		"o1-mini":           "o1 Mini",
+		"o1-preview":        "o1 Preview",
+		"o3":                "o3",
+		"o3-mini":           "o3 Mini",
+		"chatgpt-4o-latest": "ChatGPT-4o Latest",
+	}
+
+	if name, ok := wellKnown[id]; ok {
+		return name
+	}
+
+	// For other models, create a readable name from the ID
+	name := id
+	name = strings.ReplaceAll(name, "-", " ")
+	name = strings.ReplaceAll(name, "_", " ")
+
+	// Capitalize GPT
+	name = strings.ReplaceAll(name, "gpt ", "GPT ")
+
+	return name
 }

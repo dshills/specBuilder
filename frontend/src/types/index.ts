@@ -107,3 +107,25 @@ export interface ApiError {
   message: string;
   details?: unknown;
 }
+
+// LLM Models
+export type Provider = 'google' | 'openai' | 'anthropic';
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  provider: Provider;
+}
+
+export interface ProviderInfo {
+  id: Provider;
+  name: string;
+  available: boolean;
+  models: ModelInfo[];
+}
+
+export interface ListModelsResponse {
+  providers: ProviderInfo[];
+  default_provider: Provider;
+  default_model: string;
+}

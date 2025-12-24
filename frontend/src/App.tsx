@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api/client';
-import { ProjectSelector, QuestionList, SpecViewer } from './components';
-import type { Project, Question, SpecSnapshot, Issue } from './types';
+import { ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
+import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider } from './types';
 import './App.css';
 
 function App() {
@@ -11,6 +11,11 @@ function App() {
   const [snapshot, setSnapshot] = useState<SpecSnapshot | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
 
+  // Model state
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+
   // Loading states
   const [loadingProject, setLoadingProject] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
@@ -19,6 +24,22 @@ function App() {
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  // Load models on mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const { providers, default_provider, default_model } = await api.listModels();
+        setProviders(providers);
+        setSelectedProvider(default_provider);
+        setSelectedModel(default_model);
+      } catch (err) {
+        // Models endpoint failed, LLM not configured
+        console.warn('Failed to load models:', err);
+      }
+    };
+    loadModels();
+  }, []);
 
   // Load project from localStorage
   useEffect(() => {
@@ -121,7 +142,11 @@ function App() {
     setCompiling(true);
     setError(null);
     try {
-      const { snapshot_id, issues: newIssues } = await api.compile(project.id);
+      const { snapshot_id, issues: newIssues } = await api.compile(
+        project.id,
+        selectedProvider || undefined,
+        selectedModel || undefined
+      );
       const { snapshot } = await api.getSnapshot(project.id, snapshot_id);
       setSnapshot(snapshot);
       setIssues(newIssues);
@@ -130,7 +155,12 @@ function App() {
     } finally {
       setCompiling(false);
     }
-  }, [project]);
+  }, [project, selectedProvider, selectedModel]);
+
+  const handleModelSelect = useCallback((provider: Provider, model: string) => {
+    setSelectedProvider(provider);
+    setSelectedModel(model);
+  }, []);
 
   const handleNewProject = useCallback(() => {
     localStorage.removeItem('specbuilder_project_id');
@@ -170,6 +200,15 @@ function App() {
             onCreateProject={handleCreateProject}
             loading={loadingProject}
           />
+          {providers.length > 0 && (
+            <ModelSelector
+              providers={providers}
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onSelect={handleModelSelect}
+              disabled={compiling || generating}
+            />
+          )}
         </section>
 
         {project && (

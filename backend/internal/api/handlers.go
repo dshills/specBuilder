@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/dshills/specbuilder/backend/internal/diff"
 	"github.com/dshills/specbuilder/backend/internal/domain"
 	"github.com/dshills/specbuilder/backend/internal/export"
+	"github.com/dshills/specbuilder/backend/internal/llm"
 	"github.com/dshills/specbuilder/backend/internal/repository"
 	"github.com/google/uuid"
 )
@@ -31,6 +33,9 @@ func NewHandler(repo repository.Repository, comp *compiler.Service) *Handler {
 
 // RegisterRoutes registers all API routes on the given mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	// Models
+	mux.HandleFunc("GET /models", h.ListModels)
+
 	// Projects
 	mux.HandleFunc("POST /projects", h.CreateProject)
 	mux.HandleFunc("GET /projects/{projectId}", h.GetProject)
@@ -74,6 +79,30 @@ func writeError(w http.ResponseWriter, status int, err, message string) {
 
 func parseUUID(s string) (uuid.UUID, error) {
 	return uuid.Parse(s)
+}
+
+// Models
+
+type listModelsResponse struct {
+	Providers       []llm.ProviderInfo `json:"providers"`
+	DefaultProvider llm.Provider       `json:"default_provider"`
+	DefaultModel    string             `json:"default_model"`
+}
+
+func (h *Handler) ListModels(w http.ResponseWriter, r *http.Request) {
+	if h.compiler == nil {
+		writeJSON(w, http.StatusOK, listModelsResponse{
+			Providers: []llm.ProviderInfo{},
+		})
+		return
+	}
+
+	factory := h.compiler.Factory()
+	writeJSON(w, http.StatusOK, listModelsResponse{
+		Providers:       factory.ListProviders(),
+		DefaultProvider: factory.DefaultProvider(),
+		DefaultModel:    factory.DefaultModel(),
+	})
 }
 
 // Projects
@@ -431,6 +460,8 @@ func (h *Handler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 type compileRequest struct {
 	Mode           string         `json:"mode"` // latest_answers or specific_answer_versions
 	AnswerVersions map[string]int `json:"answer_versions,omitempty"`
+	Provider       llm.Provider   `json:"provider,omitempty"` // Optional: override default provider
+	Model          string         `json:"model,omitempty"`    // Optional: override default model
 }
 
 type compileResponse struct {
@@ -439,7 +470,9 @@ type compileResponse struct {
 }
 
 func (h *Handler) Compile(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Compile: starting request")
 	if h.compiler == nil {
+		log.Printf("Compile: compiler not configured")
 		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Compilation service not configured")
 		return
 	}
@@ -508,15 +541,20 @@ func (h *Handler) Compile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compile
+	log.Printf("Compile: calling LLM with %d Q&A bundles (provider: %s, model: %s)", len(qaBundles), req.Provider, req.Model)
 	output, err := h.compiler.Compile(r.Context(), compiler.CompileInput{
 		Project:     project,
 		QABundles:   qaBundles,
 		CurrentSpec: currentSpec,
+		Provider:    req.Provider,
+		Model:       req.Model,
 	})
 	if err != nil {
+		log.Printf("Compile: LLM error: %v", err)
 		writeError(w, http.StatusUnprocessableEntity, "compilation_failed", err.Error())
 		return
 	}
+	log.Printf("Compile: LLM returned successfully")
 
 	// Create snapshot
 	now := time.Now().UTC()

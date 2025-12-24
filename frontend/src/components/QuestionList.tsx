@@ -32,6 +32,7 @@ export function QuestionList({
             className="generate-more"
             onClick={onGenerateMore}
             disabled={disabled}
+            title="Use AI to generate more questions based on your answers and spec gaps"
           >
             + Generate More
           </button>

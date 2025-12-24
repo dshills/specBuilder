@@ -46,6 +46,11 @@ type PlanInput struct {
 
 // Plan runs the planner to determine next questions.
 func (s *Service) Plan(ctx context.Context, input PlanInput) (*PlannerOutput, error) {
+	llmClient, err := s.factory.CreateDefaultClient()
+	if err != nil {
+		return nil, fmt.Errorf("create llm client: %w", err)
+	}
+
 	prompt, err := llm.LoadPrompt("planner", s.promptVersion)
 	if err != nil {
 		return nil, fmt.Errorf("load prompt: %w", err)
@@ -76,7 +81,7 @@ func (s *Service) Plan(ctx context.Context, input PlanInput) (*PlannerOutput, er
 		MaxTokens:   4000,
 	}
 
-	resp, err := s.llmClient.Complete(ctx, req)
+	resp, err := llmClient.Complete(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("llm call: %w", err)
 	}
@@ -115,6 +120,11 @@ type AskInput struct {
 
 // Ask generates questions based on planner suggestions.
 func (s *Service) Ask(ctx context.Context, input AskInput) (*AskerOutput, error) {
+	llmClient, err := s.factory.CreateDefaultClient()
+	if err != nil {
+		return nil, fmt.Errorf("create llm client: %w", err)
+	}
+
 	prompt, err := llm.LoadPrompt("asker", s.promptVersion)
 	if err != nil {
 		return nil, fmt.Errorf("load prompt: %w", err)
@@ -145,7 +155,7 @@ func (s *Service) Ask(ctx context.Context, input AskInput) (*AskerOutput, error)
 		MaxTokens:   4000,
 	}
 
-	resp, err := s.llmClient.Complete(ctx, req)
+	resp, err := llmClient.Complete(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("llm call: %w", err)
 	}
