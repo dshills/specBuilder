@@ -429,7 +429,6 @@ body {
 .spec-viewer {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .spec-header {
@@ -494,7 +493,9 @@ body {
   border: 1px solid #3a2a2a;
   border-radius: 6px;
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-top: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .issues-panel h4 {
@@ -555,10 +556,8 @@ body {
 }
 
 .spec-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .spec-meta {
@@ -570,11 +569,11 @@ body {
 }
 
 .spec-json {
-  flex: 1;
   background: #1a1a2e;
   border: 1px solid #2a2a4a;
   border-radius: 6px;
   padding: 1rem;
+  max-height: calc(100vh - 350px);
   overflow: auto;
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 0.8rem;

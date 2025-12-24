@@ -1,0 +1,42 @@
+{
+  "mode": "basic",
+  "project_name": "TaskFlow",
+  "description": "Example answers for Basic mode seed questions - written for non-technical users",
+  "answers": [
+    {
+      "question": "What do you want to call your product or app?",
+      "spec_path": "/product",
+      "answer": "TaskFlow"
+    },
+    {
+      "question": "In one sentence, what problem does it solve?",
+      "spec_path": "/product",
+      "answer": "It helps busy professionals keep track of their daily tasks and never forget important deadlines."
+    },
+    {
+      "question": "Who will use this? Describe your typical user.",
+      "spec_path": "/personas",
+      "answer": "Freelancers and small business owners who juggle multiple projects and clients. They're usually between 25-45 years old, comfortable with smartphones, but don't want complicated software. They need something quick and simple."
+    },
+    {
+      "question": "What's the main thing a user should be able to do?",
+      "spec_path": "/workflows",
+      "answer": "Create a task with a deadline and get reminded before it's due. They should be able to do this in under 10 seconds."
+    },
+    {
+      "question": "What are 2-3 other important features?",
+      "spec_path": "/requirements",
+      "answer": "1. Organize tasks into projects or categories\n2. See a calendar view of upcoming deadlines\n3. Share tasks with team members or clients"
+    },
+    {
+      "question": "Is there anything you definitely don't want to include?",
+      "spec_path": "/scope/out_of_scope",
+      "answer": "No time tracking or invoicing - there are already too many apps for that. No complex Gantt charts or project management features. Keep it simple."
+    },
+    {
+      "question": "Do you have any examples of similar products you like?",
+      "spec_path": "/product",
+      "answer": "I like how simple Apple Reminders is, but I wish it had better organization. Todoist is good but feels overwhelming. I want something in between."
+    }
+  ]
+}

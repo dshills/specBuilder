@@ -48,27 +48,6 @@ export function SpecViewer({
         </div>
       </div>
 
-      {issues.length > 0 && (
-        <div className="issues-panel">
-          <h4>Issues ({issues.length})</h4>
-          <ul className="issue-list">
-            {issues.map((issue) => (
-              <li key={issue.id} className={`issue ${issue.severity}`}>
-                <span className="issue-type">{issue.type}</span>
-                <span className="issue-message">{issue.message}</span>
-                {issue.related_spec_paths.length > 0 && (
-                  <span className="issue-paths">
-                    {issue.related_spec_paths.map((p) => (
-                      <code key={p}>{p}</code>
-                    ))}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {compiling ? (
         <div className="compile-loading">
           <div className="compile-spinner" />
@@ -91,6 +70,27 @@ export function SpecViewer({
         <div className="spec-empty">
           <p>No compiled specification yet.</p>
           <p>Answer some questions and click "Compile" to generate a spec.</p>
+        </div>
+      )}
+
+      {issues.length > 0 && (
+        <div className="issues-panel">
+          <h4>Issues ({issues.length})</h4>
+          <ul className="issue-list">
+            {issues.map((issue) => (
+              <li key={issue.id} className={`issue ${issue.severity}`}>
+                <span className="issue-type">{issue.type}</span>
+                <span className="issue-message">{issue.message}</span>
+                {issue.related_spec_paths.length > 0 && (
+                  <span className="issue-paths">
+                    {issue.related_spec_paths.map((p) => (
+                      <code key={p}>{p}</code>
+                    ))}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

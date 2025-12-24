@@ -1,0 +1,42 @@
+{
+  "mode": "advanced",
+  "project_name": "TaskFlow",
+  "description": "Example answers for Advanced mode seed questions - written for technical users/developers",
+  "answers": [
+    {
+      "question": "What is the product name and one-sentence purpose?",
+      "spec_path": "/product",
+      "answer": "TaskFlow - A lightweight task management application that prioritizes speed and simplicity for individual professionals and small teams."
+    },
+    {
+      "question": "Who are the primary users/personas?",
+      "spec_path": "/personas",
+      "answer": "1. **Solo Freelancer**: Works alone, manages 3-5 active client projects, needs quick task capture and deadline tracking. Tech-savvy but time-constrained.\n\n2. **Small Team Lead**: Manages 2-4 team members, needs to assign tasks and track progress without heavyweight PM tools. Values visibility over detailed reporting.\n\n3. **Executive Assistant**: Manages tasks on behalf of others, needs delegation features and calendar integration. Requires mobile-first experience."
+    },
+    {
+      "question": "What is explicitly out of scope?",
+      "spec_path": "/scope/out_of_scope",
+      "answer": "- Time tracking and timesheets\n- Invoicing or billing integration\n- Gantt charts or complex dependency management\n- Resource allocation and capacity planning\n- File storage (link to external storage only)\n- Built-in chat or messaging\n- Custom workflows or automation builder (v1)"
+    },
+    {
+      "question": "Describe the primary workflow (happy path) in 5-10 steps.",
+      "spec_path": "/workflows",
+      "answer": "**Quick Task Creation Flow:**\n1. User opens app (web or mobile)\n2. User clicks '+' or uses keyboard shortcut (Cmd+N)\n3. Quick-add modal appears with cursor in title field\n4. User types task title, optionally adds due date via natural language (e.g., 'tomorrow 3pm')\n5. User optionally assigns to project using '#' prefix\n6. User presses Enter to save\n7. Task appears in inbox/today view\n8. System schedules notification based on due date\n9. User marks task complete when done\n10. Task moves to completed archive with timestamp"
+    },
+    {
+      "question": "What data entities exist (roughly)?",
+      "spec_path": "/data_model",
+      "answer": "**Core Entities:**\n- `User`: id, email, name, preferences, created_at\n- `Workspace`: id, name, owner_id, settings\n- `Project`: id, workspace_id, name, color, archived\n- `Task`: id, project_id, title, description, due_at, priority, status, assignee_id, creator_id, created_at, completed_at\n- `Label`: id, workspace_id, name, color\n- `TaskLabel`: task_id, label_id (junction table)\n- `Comment`: id, task_id, user_id, content, created_at\n\n**Relationships:**\n- User belongs to many Workspaces (via membership)\n- Workspace has many Projects\n- Project has many Tasks\n- Task has one assignee (User), one creator (User)\n- Task has many Labels, Comments"
+    },
+    {
+      "question": "What interfaces are required (API/UI/integrations)?",
+      "spec_path": "/api",
+      "answer": "**API:**\n- REST API for CRUD operations on all entities\n- WebSocket for real-time updates (task changes, comments)\n- OAuth2 for third-party integrations\n\n**UI:**\n- Web app (React, responsive)\n- Mobile apps (iOS, Android - React Native)\n- Browser extension for quick capture\n\n**Integrations (v1):**\n- Google Calendar (2-way sync for due dates)\n- Slack (notifications, quick add via slash command)\n- Email (create tasks by forwarding)"
+    },
+    {
+      "question": "What non-functional constraints matter most (security, performance, cost)?",
+      "spec_path": "/non_functionals",
+      "answer": "**Performance:**\n- Page load < 2s on 3G connection\n- Task creation < 100ms perceived latency\n- Support 10K concurrent users initially\n\n**Security:**\n- SOC 2 Type II compliance (required for enterprise clients)\n- Data encryption at rest and in transit\n- SSO/SAML support for team plans\n- GDPR compliant with data export/deletion\n\n**Availability:**\n- 99.9% uptime SLA\n- Daily backups with 30-day retention\n\n**Cost:**\n- Infrastructure < $500/mo at 1K users\n- Target CAC < $50, LTV > $200"
+    }
+  ]
+}
