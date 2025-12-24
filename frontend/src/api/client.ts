@@ -9,6 +9,7 @@ import type {
   ListSnapshotsResponse,
   ListModelsResponse,
   Provider,
+  ProjectMode,
   ApiError,
 } from '../types';
 
@@ -52,10 +53,10 @@ class ApiClient {
   }
 
   // Projects
-  async createProject(name: string): Promise<CreateProjectResponse> {
+  async createProject(name: string, mode: ProjectMode = 'advanced'): Promise<CreateProjectResponse> {
     return this.request<CreateProjectResponse>('/projects', {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, mode }),
     });
   }
 

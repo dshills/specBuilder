@@ -1,13 +1,17 @@
 // Domain types matching backend
 
+export type ProjectMode = 'basic' | 'advanced';
+
 export interface Project {
   id: string;
   name: string;
+  mode: ProjectMode;
   created_at: string;
   updated_at: string;
 }
 
 export type QuestionType = 'single' | 'multi' | 'freeform';
+export type QuestionMode = 'basic' | 'advanced';
 export type QuestionStatus = 'unanswered' | 'answered' | 'skipped' | 'superseded';
 
 export interface Question {

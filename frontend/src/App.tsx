@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api/client';
 import { ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
-import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider } from './types';
+import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode } from './types';
 import './App.css';
 
 function App() {
@@ -91,10 +91,10 @@ function App() {
     }
   };
 
-  const handleCreateProject = useCallback(async (name: string) => {
+  const handleCreateProject = useCallback(async (name: string, mode: ProjectMode) => {
     setError(null);
     try {
-      const { project_id } = await api.createProject(name);
+      const { project_id } = await api.createProject(name, mode);
       await loadProject(project_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');

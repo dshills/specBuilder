@@ -24,7 +24,24 @@ describe('ApiClient', () => {
   };
 
   describe('createProject', () => {
-    it('sends POST request with project name', async () => {
+    it('sends POST request with project name and mode', async () => {
+      mockResponse({ project_id: 'p123' });
+
+      await api.createProject('My Project', 'basic');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/projects'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ name: 'My Project', mode: 'basic' }),
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('defaults to advanced mode', async () => {
       mockResponse({ project_id: 'p123' });
 
       await api.createProject('My Project');
@@ -32,11 +49,7 @@ describe('ApiClient', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/projects'),
         expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ name: 'My Project' }),
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
+          body: JSON.stringify({ name: 'My Project', mode: 'advanced' }),
         })
       );
     });

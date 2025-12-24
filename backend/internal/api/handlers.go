@@ -109,6 +109,7 @@ func (h *Handler) ListModels(w http.ResponseWriter, r *http.Request) {
 
 type createProjectRequest struct {
 	Name string `json:"name"`
+	Mode string `json:"mode"` // "basic" or "advanced" (default: advanced)
 }
 
 type createProjectResponse struct {
@@ -126,10 +127,17 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Default to advanced mode
+	mode := domain.ProjectModeAdvanced
+	if req.Mode == "basic" {
+		mode = domain.ProjectModeBasic
+	}
+
 	now := time.Now().UTC()
 	project := &domain.Project{
 		ID:        uuid.New(),
 		Name:      req.Name,
+		Mode:      mode,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -140,25 +148,47 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Seed minimum questions for new project
-	if err := h.seedQuestions(r.Context(), project.ID); err != nil {
+	if err := h.seedQuestions(r.Context(), project.ID, mode); err != nil {
 		// Log but don't fail - project was created
 	}
 
 	writeJSON(w, http.StatusCreated, createProjectResponse{ProjectID: project.ID})
 }
 
-func (h *Handler) seedQuestions(ctx context.Context, projectID uuid.UUID) error {
-	seeds := []struct {
+func (h *Handler) seedQuestions(ctx context.Context, projectID uuid.UUID, mode domain.ProjectMode) error {
+	var seeds []struct {
 		text     string
 		specPath string
-	}{
-		{"What is the product name and one-sentence purpose?", "/product"},
-		{"Who are the primary users/personas?", "/personas"},
-		{"What is explicitly out of scope?", "/scope/out_of_scope"},
-		{"Describe the primary workflow (happy path) in 5-10 steps.", "/workflows"},
-		{"What data entities exist (roughly)?", "/data_model"},
-		{"What interfaces are required (API/UI/integrations)?", "/api"},
-		{"What non-functional constraints matter most (security, performance, cost)?", "/non_functionals"},
+	}
+
+	if mode == domain.ProjectModeBasic {
+		// Simple, non-technical questions for non-programmers
+		seeds = []struct {
+			text     string
+			specPath string
+		}{
+			{"What do you want to call your product or app?", "/product"},
+			{"In one sentence, what problem does it solve?", "/product"},
+			{"Who will use this? Describe your typical user.", "/personas"},
+			{"What's the main thing a user should be able to do?", "/workflows"},
+			{"What are 2-3 other important features?", "/requirements"},
+			{"Is there anything you definitely don't want to include?", "/scope/out_of_scope"},
+			{"Do you have any examples of similar products you like?", "/product"},
+		}
+	} else {
+		// Technical questions for developers (advanced mode)
+		seeds = []struct {
+			text     string
+			specPath string
+		}{
+			{"What is the product name and one-sentence purpose?", "/product"},
+			{"Who are the primary users/personas?", "/personas"},
+			{"What is explicitly out of scope?", "/scope/out_of_scope"},
+			{"Describe the primary workflow (happy path) in 5-10 steps.", "/workflows"},
+			{"What data entities exist (roughly)?", "/data_model"},
+			{"What interfaces are required (API/UI/integrations)?", "/api"},
+			{"What non-functional constraints matter most (security, performance, cost)?", "/non_functionals"},
+		}
 	}
 
 	now := time.Now().UTC()
@@ -640,6 +670,13 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Convert project mode to compiler mode
+	mode := compiler.ModeAdvanced
+	if project.Mode == domain.ProjectModeBasic {
+		mode = compiler.ModeBasic
+	}
+	log.Printf("GenerateNextQuestions: mode=%s (project.Mode=%s)", mode, project.Mode)
+
 	// Get existing questions and answers
 	questions, _ := h.repo.ListQuestions(r.Context(), projectID, nil, nil)
 	answers, _ := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
@@ -661,6 +698,7 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 		CurrentIssues:     currentIssues,
 		ExistingQuestions: questions,
 		LatestAnswers:     answers,
+		Mode:              mode,
 	})
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "planner_failed", err.Error())
@@ -674,6 +712,7 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 		CurrentSpec:        currentSpec,
 		ExistingQuestions:  questions,
 		LatestAnswers:      answers,
+		Mode:               mode,
 	})
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "asker_failed", err.Error())

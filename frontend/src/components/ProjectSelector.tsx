@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { Project } from '../types';
+import type { Project, ProjectMode } from '../types';
 
 interface ProjectSelectorProps {
   project: Project | null;
-  onCreateProject: (name: string) => Promise<void>;
+  onCreateProject: (name: string, mode: ProjectMode) => Promise<void>;
   loading: boolean;
 }
 
@@ -13,6 +13,7 @@ export function ProjectSelector({
   loading,
 }: ProjectSelectorProps) {
   const [name, setName] = useState('');
+  const [mode, setMode] = useState<ProjectMode>('basic');
   const [creating, setCreating] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,7 +22,7 @@ export function ProjectSelector({
 
     setCreating(true);
     try {
-      await onCreateProject(name.trim());
+      await onCreateProject(name.trim(), mode);
       setName('');
     } finally {
       setCreating(false);
@@ -37,6 +38,7 @@ export function ProjectSelector({
       <div className="project-selector active">
         <span className="project-label">Project:</span>
         <span className="project-name">{project.name}</span>
+        <span className="project-mode">{project.mode === 'basic' ? 'Basic' : 'Advanced'}</span>
       </div>
     );
   }
@@ -50,6 +52,32 @@ export function ProjectSelector({
         onChange={(e) => setName(e.target.value)}
         disabled={creating}
       />
+      <div className="mode-selector">
+        <button
+          type="button"
+          style={{
+            background: mode === 'basic' ? '#3a5a8a' : 'transparent',
+            color: mode === 'basic' ? '#fff' : '#888',
+          }}
+          onClick={() => setMode('basic')}
+          disabled={creating}
+          title="Simple questions for non-technical users"
+        >
+          Basic
+        </button>
+        <button
+          type="button"
+          style={{
+            background: mode === 'advanced' ? '#3a5a8a' : 'transparent',
+            color: mode === 'advanced' ? '#fff' : '#888',
+          }}
+          onClick={() => setMode('advanced')}
+          disabled={creating}
+          title="Technical questions for developers"
+        >
+          Advanced
+        </button>
+      </div>
       <button type="submit" disabled={creating || !name.trim()}>
         {creating ? 'Creating...' : 'Create Project'}
       </button>

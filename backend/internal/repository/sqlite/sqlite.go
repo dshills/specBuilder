@@ -42,6 +42,7 @@ func (r *SQLiteRepository) migrate() error {
 	CREATE TABLE IF NOT EXISTS projects (
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
+		mode TEXT NOT NULL DEFAULT 'advanced',
 		created_at TEXT NOT NULL,
 		updated_at TEXT NOT NULL
 	);
@@ -100,7 +101,14 @@ func (r *SQLiteRepository) migrate() error {
 	`
 
 	_, err := r.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Migration: add mode column to existing projects table
+	_, _ = r.db.Exec(`ALTER TABLE projects ADD COLUMN mode TEXT NOT NULL DEFAULT 'advanced'`)
+
+	return nil
 }
 
 func (r *SQLiteRepository) Close() error {
@@ -110,14 +118,18 @@ func (r *SQLiteRepository) Close() error {
 // Projects
 
 func (r *SQLiteRepository) CreateProject(ctx context.Context, p *domain.Project) error {
+	mode := string(p.Mode)
+	if mode == "" {
+		mode = string(domain.ProjectModeAdvanced)
+	}
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-		p.ID.String(), p.Name, p.CreatedAt.Format(time.RFC3339), p.UpdatedAt.Format(time.RFC3339))
+		`INSERT INTO projects (id, name, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		p.ID.String(), p.Name, mode, p.CreatedAt.Format(time.RFC3339), p.UpdatedAt.Format(time.RFC3339))
 	return err
 }
 
 func (r *SQLiteRepository) GetProject(ctx context.Context, id uuid.UUID) (*domain.Project, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id, name, created_at, updated_at FROM projects WHERE id = ?`, id.String())
+	row := r.db.QueryRowContext(ctx, `SELECT id, name, mode, created_at, updated_at FROM projects WHERE id = ?`, id.String())
 	return scanProject(row)
 }
 
@@ -155,8 +167,8 @@ func (r *SQLiteRepository) GetLatestSnapshotID(ctx context.Context, projectID uu
 
 func scanProject(row *sql.Row) (*domain.Project, error) {
 	var p domain.Project
-	var idStr, createdStr, updatedStr string
-	if err := row.Scan(&idStr, &p.Name, &createdStr, &updatedStr); err != nil {
+	var idStr, modeStr, createdStr, updatedStr string
+	if err := row.Scan(&idStr, &p.Name, &modeStr, &createdStr, &updatedStr); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrNotFound
 		}
@@ -166,6 +178,10 @@ func scanProject(row *sql.Row) (*domain.Project, error) {
 	p.ID, err = uuid.Parse(idStr)
 	if err != nil {
 		return nil, err
+	}
+	p.Mode = domain.ProjectMode(modeStr)
+	if p.Mode == "" {
+		p.Mode = domain.ProjectModeAdvanced
 	}
 	p.CreatedAt, err = time.Parse(time.RFC3339, createdStr)
 	if err != nil {
@@ -685,14 +701,18 @@ func (t *txRepository) queryContext(ctx context.Context, query string, args ...i
 // For brevity, these mirror the main implementations but use t.tx instead of r.db
 
 func (t *txRepository) CreateProject(ctx context.Context, p *domain.Project) error {
+	mode := string(p.Mode)
+	if mode == "" {
+		mode = string(domain.ProjectModeAdvanced)
+	}
 	_, err := t.execContext(ctx,
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-		p.ID.String(), p.Name, p.CreatedAt.Format(time.RFC3339), p.UpdatedAt.Format(time.RFC3339))
+		`INSERT INTO projects (id, name, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		p.ID.String(), p.Name, mode, p.CreatedAt.Format(time.RFC3339), p.UpdatedAt.Format(time.RFC3339))
 	return err
 }
 
 func (t *txRepository) GetProject(ctx context.Context, id uuid.UUID) (*domain.Project, error) {
-	row := t.queryRowContext(ctx, `SELECT id, name, created_at, updated_at FROM projects WHERE id = ?`, id.String())
+	row := t.queryRowContext(ctx, `SELECT id, name, mode, created_at, updated_at FROM projects WHERE id = ?`, id.String())
 	return scanProject(row)
 }
 

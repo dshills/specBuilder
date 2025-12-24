@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/dshills/specbuilder/backend/internal/domain"
 	"github.com/dshills/specbuilder/backend/internal/llm"
@@ -35,6 +36,16 @@ type PlannerSuggestion struct {
 	Tags               []string `json:"tags"`
 }
 
+// QuestionMode represents the question complexity level.
+type QuestionMode string
+
+const (
+	// ModeBasic generates simpler questions for non-programmers
+	ModeBasic QuestionMode = "basic"
+	// ModeAdvanced generates technical questions for developers
+	ModeAdvanced QuestionMode = "advanced"
+)
+
 // PlanInput holds input for planning.
 type PlanInput struct {
 	Project           *domain.Project
@@ -42,6 +53,7 @@ type PlanInput struct {
 	CurrentIssues     []*domain.Issue
 	ExistingQuestions []*domain.Question
 	LatestAnswers     []*domain.Answer
+	Mode              QuestionMode // basic or advanced
 }
 
 // Plan runs the planner to determine next questions.
@@ -51,7 +63,14 @@ func (s *Service) Plan(ctx context.Context, input PlanInput) (*PlannerOutput, er
 		return nil, fmt.Errorf("create llm client: %w", err)
 	}
 
-	prompt, err := llm.LoadPrompt("planner", s.promptVersion)
+	// Select prompt based on mode
+	promptName := "planner"
+	if input.Mode == ModeBasic {
+		promptName = "planner_basic"
+	}
+	log.Printf("Plan: using prompt %s (mode=%s)", promptName, input.Mode)
+
+	prompt, err := llm.LoadPrompt(promptName, s.promptVersion)
 	if err != nil {
 		return nil, fmt.Errorf("load prompt: %w", err)
 	}
@@ -116,6 +135,7 @@ type AskInput struct {
 	CurrentSpec        json.RawMessage
 	ExistingQuestions  []*domain.Question
 	LatestAnswers      []*domain.Answer
+	Mode               QuestionMode // basic or advanced
 }
 
 // Ask generates questions based on planner suggestions.
@@ -125,7 +145,13 @@ func (s *Service) Ask(ctx context.Context, input AskInput) (*AskerOutput, error)
 		return nil, fmt.Errorf("create llm client: %w", err)
 	}
 
-	prompt, err := llm.LoadPrompt("asker", s.promptVersion)
+	// Select prompt based on mode
+	promptName := "asker"
+	if input.Mode == ModeBasic {
+		promptName = "asker_basic"
+	}
+
+	prompt, err := llm.LoadPrompt(promptName, s.promptVersion)
 	if err != nil {
 		return nil, fmt.Errorf("load prompt: %w", err)
 	}

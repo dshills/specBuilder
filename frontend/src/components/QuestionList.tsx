@@ -34,12 +34,12 @@ export function QuestionList({
             disabled={disabled}
             title="Use AI to generate more questions based on your answers and spec gaps"
           >
-            + Generate More
+            + Add Questions
           </button>
         </h3>
         {unanswered.length === 0 ? (
           <p className="empty">
-            No unanswered questions. Click "Generate More" to continue.
+            No unanswered questions. Click "Add Questions" to continue.
           </p>
         ) : (
           unanswered

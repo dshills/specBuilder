@@ -116,7 +116,7 @@ describe('QuestionList', () => {
   });
 
   describe('generate more button', () => {
-    it('renders generate more button', () => {
+    it('renders add questions button', () => {
       render(
         <QuestionList
           questions={[]}
@@ -127,7 +127,7 @@ describe('QuestionList', () => {
         />
       );
 
-      expect(screen.getByRole('button', { name: '+ Generate More' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '+ Add Questions' })).toBeInTheDocument();
     });
 
     it('calls onGenerateMore when clicked', async () => {
@@ -144,7 +144,7 @@ describe('QuestionList', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: '+ Generate More' }));
+      await user.click(screen.getByRole('button', { name: '+ Add Questions' }));
       expect(onGenerateMore).toHaveBeenCalled();
     });
 
@@ -159,7 +159,7 @@ describe('QuestionList', () => {
         />
       );
 
-      expect(screen.getByRole('button', { name: '+ Generate More' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: '+ Add Questions' })).toBeDisabled();
     });
   });
 

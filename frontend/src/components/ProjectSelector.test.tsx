@@ -7,6 +7,7 @@ import type { Project } from '../types';
 const createProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'p1',
   name: 'Test Project',
+  mode: 'basic',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   ...overrides,
@@ -85,7 +86,7 @@ describe('ProjectSelector', () => {
       await user.click(screen.getByRole('button', { name: 'Create Project' }));
 
       await waitFor(() => {
-        expect(onCreateProject).toHaveBeenCalledWith('My Project');
+        expect(onCreateProject).toHaveBeenCalledWith('My Project', 'basic');
       });
     });
 
@@ -105,7 +106,7 @@ describe('ProjectSelector', () => {
       await user.click(screen.getByRole('button', { name: 'Create Project' }));
 
       await waitFor(() => {
-        expect(onCreateProject).toHaveBeenCalledWith('My Project');
+        expect(onCreateProject).toHaveBeenCalledWith('My Project', 'basic');
       });
     });
 

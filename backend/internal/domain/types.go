@@ -51,12 +51,23 @@ const (
 	CompileModeSpecificAnswerVersions CompileMode = "specific_answer_versions"
 )
 
+// ProjectMode represents the question complexity mode for a project.
+type ProjectMode string
+
+const (
+	// ProjectModeBasic generates simpler questions for non-programmers
+	ProjectModeBasic ProjectMode = "basic"
+	// ProjectModeAdvanced generates technical questions for developers
+	ProjectModeAdvanced ProjectMode = "advanced"
+)
+
 // Project represents a specification project.
 type Project struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uuid.UUID   `json:"id"`
+	Name      string      `json:"name"`
+	Mode      ProjectMode `json:"mode"` // basic or advanced
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 // Question represents a question in a project.
