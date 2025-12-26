@@ -275,6 +275,7 @@ function App() {
                 onGenerateMore={handleGenerateMore}
                 disabled={isDisabled}
                 loading={loadingQuestions}
+                generating={generating}
                 loadingSuggestions={loadingSuggestions}
               />
             </section>

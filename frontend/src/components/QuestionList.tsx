@@ -8,6 +8,7 @@ interface QuestionListProps {
   onGenerateMore: () => Promise<void>;
   disabled: boolean;
   loading: boolean;
+  generating: boolean;
   loadingSuggestions: boolean;
 }
 
@@ -18,6 +19,7 @@ export function QuestionList({
   onGenerateMore,
   disabled,
   loading,
+  generating,
   loadingSuggestions,
 }: QuestionListProps) {
   // Create a map for quick suggestion lookup by question ID
@@ -44,10 +46,17 @@ export function QuestionList({
           <button
             className="generate-more"
             onClick={onGenerateMore}
-            disabled={disabled}
+            disabled={disabled || generating}
             title="Use AI to generate more questions based on your answers and spec gaps"
           >
-            + Add Questions
+            {generating ? (
+              <>
+                <span className="spinner" />
+                Generating...
+              </>
+            ) : (
+              '+ Add Questions'
+            )}
           </button>
         </h3>
         {unanswered.length === 0 ? (

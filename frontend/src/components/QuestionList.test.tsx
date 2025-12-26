@@ -29,6 +29,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={true}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -47,6 +48,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -71,6 +73,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -92,6 +95,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -114,6 +118,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -135,6 +140,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -154,6 +160,7 @@ describe('QuestionList', () => {
           onGenerateMore={onGenerateMore}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -171,6 +178,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={true}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -194,6 +202,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
@@ -215,6 +224,7 @@ describe('QuestionList', () => {
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          generating={false}
           loadingSuggestions={false}
         />
       );
