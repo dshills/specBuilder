@@ -24,10 +24,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={[]}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={true}
+          loadingSuggestions={false}
         />
       );
 
@@ -40,10 +42,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={[]}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -62,10 +66,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={questions}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -81,10 +87,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={questions}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -101,10 +109,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={questions}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -120,10 +130,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={[]}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -137,10 +149,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={[]}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={onGenerateMore}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -152,10 +166,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={[]}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={true}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -173,10 +189,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={questions}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 
@@ -192,10 +210,12 @@ describe('QuestionList', () => {
       render(
         <QuestionList
           questions={questions}
+          suggestions={[]}
           onSubmitAnswer={vi.fn()}
           onGenerateMore={vi.fn()}
           disabled={false}
           loading={false}
+          loadingSuggestions={false}
         />
       );
 

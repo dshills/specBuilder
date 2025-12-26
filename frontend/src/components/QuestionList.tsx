@@ -1,21 +1,29 @@
-import type { Question } from '../types';
+import type { Question, Suggestion } from '../types';
 import { QuestionCard } from './QuestionCard';
 
 interface QuestionListProps {
   questions: Question[];
+  suggestions: Suggestion[];
   onSubmitAnswer: (questionId: string, value: unknown) => Promise<void>;
   onGenerateMore: () => Promise<void>;
   disabled: boolean;
   loading: boolean;
+  loadingSuggestions: boolean;
 }
 
 export function QuestionList({
   questions,
+  suggestions,
   onSubmitAnswer,
   onGenerateMore,
   disabled,
   loading,
+  loadingSuggestions,
 }: QuestionListProps) {
+  // Create a map for quick suggestion lookup by question ID
+  const suggestionMap = new Map(
+    suggestions.map((s) => [s.question_id, s])
+  );
   const unanswered = questions.filter((q) => q.status === 'unanswered');
   const answered = questions.filter((q) => q.status === 'answered');
 
@@ -28,6 +36,11 @@ export function QuestionList({
       <div className="question-section">
         <h3>
           Unanswered Questions ({unanswered.length})
+          {loadingSuggestions && (
+            <span className="suggestions-loading" title="Generating suggested answers...">
+              🔄
+            </span>
+          )}
           <button
             className="generate-more"
             onClick={onGenerateMore}
@@ -48,6 +61,7 @@ export function QuestionList({
               <QuestionCard
                 key={q.id}
                 question={q}
+                suggestion={suggestionMap.get(q.id)}
                 onSubmitAnswer={onSubmitAnswer}
                 disabled={disabled}
               />

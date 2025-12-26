@@ -44,6 +44,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /projects/{projectId}/questions", h.ListQuestions)
 	mux.HandleFunc("POST /projects/{projectId}/next-questions", h.GenerateNextQuestions)
 
+	// Suggestions
+	mux.HandleFunc("POST /projects/{projectId}/suggestions", h.GenerateSuggestions)
+
 	// Answers
 	mux.HandleFunc("POST /projects/{projectId}/answers", h.SubmitAnswer)
 
@@ -747,6 +750,101 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, nextQuestionsResponse{Questions: newQuestions})
+}
+
+// Suggestions
+
+type suggestionsResponse struct {
+	Suggestions []suggestionItem `json:"suggestions"`
+}
+
+type suggestionItem struct {
+	QuestionID     string          `json:"question_id"`
+	SuggestedValue json.RawMessage `json:"suggested_value"`
+	Confidence     string          `json:"confidence"`
+	Reasoning      string          `json:"reasoning"`
+}
+
+func (h *Handler) GenerateSuggestions(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.PathValue("projectId")
+	projectID, err := parseUUID(projectIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_uuid", "Invalid project ID format")
+		return
+	}
+
+	// Get project
+	project, err := h.repo.GetProject(r.Context(), projectID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "Project not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+
+	// Convert project mode to compiler mode
+	mode := compiler.ModeAdvanced
+	if project.Mode == domain.ProjectModeBasic {
+		mode = compiler.ModeBasic
+	}
+
+	// Get all questions and filter for unanswered
+	questions, err := h.repo.ListQuestions(r.Context(), projectID, nil, nil)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+
+	unanswered := make([]*domain.Question, 0)
+	for _, q := range questions {
+		if q.Status == domain.QuestionStatusUnanswered {
+			unanswered = append(unanswered, q)
+		}
+	}
+
+	if len(unanswered) == 0 {
+		writeJSON(w, http.StatusOK, suggestionsResponse{Suggestions: []suggestionItem{}})
+		return
+	}
+
+	// Get latest answers for context
+	answers, _ := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
+
+	// Get current spec if available
+	var currentSpec json.RawMessage
+	if snapshotID, err := h.repo.GetLatestSnapshotID(r.Context(), projectID); err == nil && snapshotID != nil {
+		if snapshot, err := h.repo.GetSnapshot(r.Context(), *snapshotID); err == nil {
+			currentSpec = snapshot.Spec
+		}
+	}
+
+	// Call suggester
+	suggestOutput, err := h.compiler.Suggest(r.Context(), compiler.SuggestInput{
+		Project:             project,
+		UnansweredQuestions: unanswered,
+		LatestAnswers:       answers,
+		CurrentSpec:         currentSpec,
+		Mode:                mode,
+	})
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "suggester_failed", err.Error())
+		return
+	}
+
+	// Convert to response format
+	suggestions := make([]suggestionItem, len(suggestOutput.Suggestions))
+	for i, s := range suggestOutput.Suggestions {
+		suggestions[i] = suggestionItem{
+			QuestionID:     s.QuestionID,
+			SuggestedValue: s.SuggestedValue,
+			Confidence:     s.Confidence,
+			Reasoning:      s.Reasoning,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, suggestionsResponse{Suggestions: suggestions})
 }
 
 // Diff

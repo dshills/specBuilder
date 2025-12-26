@@ -133,3 +133,17 @@ export interface ListModelsResponse {
   default_provider: Provider;
   default_model: string;
 }
+
+// Suggestions
+export type SuggestionConfidence = 'high' | 'medium' | 'low';
+
+export interface Suggestion {
+  question_id: string;
+  suggested_value: unknown;
+  confidence: SuggestionConfidence;
+  reasoning: string;
+}
+
+export interface SuggestionsResponse {
+  suggestions: Suggestion[];
+}

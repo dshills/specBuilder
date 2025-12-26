@@ -425,6 +425,79 @@ body {
   color: #8ab;
 }
 
+/* Suggestion box */
+.suggestion-box {
+  background: #1a2a3a;
+  border: 1px solid #2a4a5a;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.suggestion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.suggestion-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6ab;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.suggestion-confidence {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.suggestion-value {
+  background: #141420;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #ddd;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.suggestion-reasoning {
+  font-size: 0.8rem;
+  color: #888;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+}
+
+.apply-suggestion {
+  background: #2a5a5a;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.apply-suggestion:hover:not(:disabled) {
+  background: #3a6a6a;
+}
+
+.apply-suggestion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.suggestions-loading {
+  margin-left: 0.5rem;
+  font-size: 0.9rem;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
 /* Spec viewer */
 .spec-viewer {
   display: flex;

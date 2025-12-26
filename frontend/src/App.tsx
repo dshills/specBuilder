@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api/client';
 import { ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
-import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode } from './types';
+import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion } from './types';
 import './App.css';
 
 function App() {
@@ -10,6 +10,7 @@ function App() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [snapshot, setSnapshot] = useState<SpecSnapshot | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   // Model state
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -21,6 +22,7 @@ function App() {
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [compiling, setCompiling] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,20 @@ function App() {
     }
   };
 
+  const refreshSuggestions = useCallback(async (projectId: string) => {
+    // Generate suggestions in background - don't block UI
+    setLoadingSuggestions(true);
+    try {
+      const { suggestions: newSuggestions } = await api.generateSuggestions(projectId);
+      setSuggestions(newSuggestions);
+    } catch (err) {
+      // Suggestions are optional, don't show error banner
+      console.warn('Failed to generate suggestions:', err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, []);
+
   const handleCreateProject = useCallback(async (name: string, mode: ProjectMode) => {
     setError(null);
     try {
@@ -109,13 +125,15 @@ function App() {
         await api.submitAnswer(project.id, questionId, value, false);
         // Refresh questions to update status
         await loadQuestions(project.id);
+        // Refresh suggestions in background (don't await)
+        refreshSuggestions(project.id);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to submit answer'
         );
       }
     },
-    [project]
+    [project, refreshSuggestions]
   );
 
   const handleGenerateMore = useCallback(async () => {
@@ -128,6 +146,8 @@ function App() {
         5
       );
       setQuestions((prev) => [...prev, ...newQuestions]);
+      // Refresh suggestions for the new questions (don't await)
+      refreshSuggestions(project.id);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to generate questions'
@@ -135,7 +155,7 @@ function App() {
     } finally {
       setGenerating(false);
     }
-  }, [project]);
+  }, [project, refreshSuggestions]);
 
   const handleCompile = useCallback(async () => {
     if (!project) return;
@@ -168,6 +188,7 @@ function App() {
     setQuestions([]);
     setSnapshot(null);
     setIssues([]);
+    setSuggestions([]);
     setError(null);
   }, []);
 
@@ -222,10 +243,12 @@ function App() {
               </h2>
               <QuestionList
                 questions={questions}
+                suggestions={suggestions}
                 onSubmitAnswer={handleSubmitAnswer}
                 onGenerateMore={handleGenerateMore}
                 disabled={isDisabled}
                 loading={loadingQuestions}
+                loadingSuggestions={loadingSuggestions}
               />
             </section>
 

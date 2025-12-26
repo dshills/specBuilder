@@ -8,6 +8,7 @@ import type {
   GetSnapshotResponse,
   ListSnapshotsResponse,
   ListModelsResponse,
+  SuggestionsResponse,
   Provider,
   ProjectMode,
   ApiError,
@@ -163,6 +164,16 @@ class ApiClient {
       return `${base}?snapshot_id=${snapshotId}`;
     }
     return base;
+  }
+
+  // Suggestions
+  async generateSuggestions(projectId: string): Promise<SuggestionsResponse> {
+    // Suggestion generation calls LLM, can take 1-2 minutes
+    return this.request<SuggestionsResponse>(
+      `/projects/${projectId}/suggestions`,
+      { method: 'POST' },
+      120000 // 2 minute timeout
+    );
   }
 }
 

@@ -135,3 +135,20 @@ type IssueDraft struct {
 	RelatedSpecPaths   []string      `json:"related_spec_paths"`
 	RelatedQuestionIDs []string      `json:"related_question_ids"` // string UUIDs from LLM
 }
+
+// SuggestionConfidence represents how confident the LLM is in a suggestion.
+type SuggestionConfidence string
+
+const (
+	SuggestionConfidenceHigh   SuggestionConfidence = "high"
+	SuggestionConfidenceMedium SuggestionConfidence = "medium"
+	SuggestionConfidenceLow    SuggestionConfidence = "low"
+)
+
+// Suggestion represents a suggested answer for an unanswered question.
+type Suggestion struct {
+	QuestionID     uuid.UUID            `json:"question_id"`
+	SuggestedValue json.RawMessage      `json:"suggested_value"` // The suggested answer value
+	Confidence     SuggestionConfidence `json:"confidence"`
+	Reasoning      string               `json:"reasoning"`
+}

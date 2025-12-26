@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import type { Question } from '../types';
+import type { Question, Suggestion } from '../types';
 
 interface QuestionCardProps {
   question: Question;
+  suggestion?: Suggestion;
   onSubmitAnswer: (questionId: string, value: unknown) => Promise<void>;
   disabled: boolean;
 }
 
 export function QuestionCard({
   question,
+  suggestion,
   onSubmitAnswer,
   disabled,
 }: QuestionCardProps) {
@@ -106,6 +108,38 @@ export function QuestionCard({
 
   const isAnswered = question.status === 'answered';
 
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    const value = suggestion.suggested_value;
+    if (question.type === 'multi' && Array.isArray(value)) {
+      setAnswer(value as string[]);
+    } else if (typeof value === 'string') {
+      setAnswer(value);
+    } else {
+      // For complex values, stringify for freeform
+      setAnswer(JSON.stringify(value, null, 2));
+    }
+  };
+
+  const formatSuggestedValue = (value: unknown): string => {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    if (typeof value === 'string') {
+      return value.length > 100 ? value.substring(0, 100) + '...' : value;
+    }
+    return JSON.stringify(value);
+  };
+
+  const confidenceColor = (conf: string): string => {
+    switch (conf) {
+      case 'high': return '#2d7a4f';
+      case 'medium': return '#b8860b';
+      case 'low': return '#8b4049';
+      default: return '#666';
+    }
+  };
+
   return (
     <div className={`question-card ${isAnswered ? 'answered' : ''}`}>
       <div className="question-header">
@@ -121,6 +155,33 @@ export function QuestionCard({
       </div>
 
       <p className="question-text">{question.text}</p>
+
+      {!isAnswered && suggestion && (
+        <div className="suggestion-box">
+          <div className="suggestion-header">
+            <span className="suggestion-label">AI Suggestion</span>
+            <span
+              className="suggestion-confidence"
+              style={{ color: confidenceColor(suggestion.confidence) }}
+            >
+              {suggestion.confidence} confidence
+            </span>
+          </div>
+          <div className="suggestion-value">
+            {formatSuggestedValue(suggestion.suggested_value)}
+          </div>
+          {suggestion.reasoning && (
+            <div className="suggestion-reasoning">{suggestion.reasoning}</div>
+          )}
+          <button
+            className="apply-suggestion"
+            onClick={applySuggestion}
+            disabled={disabled || submitting}
+          >
+            Use Suggestion
+          </button>
+        </div>
+      )}
 
       {!isAnswered && (
         <>
