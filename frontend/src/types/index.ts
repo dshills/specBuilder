@@ -69,6 +69,10 @@ export interface Issue {
 
 // API response types
 
+export interface ListProjectsResponse {
+  projects: Project[];
+}
+
 export interface CreateProjectResponse {
   project_id: string;
 }

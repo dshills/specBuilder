@@ -50,6 +50,47 @@ func (r *Repository) GetProject(ctx context.Context, id uuid.UUID) (*domain.Proj
 	return p, nil
 }
 
+func (r *Repository) ListProjects(ctx context.Context) ([]*domain.Project, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.Project
+	for _, p := range r.projects {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *Repository) DeleteProject(ctx context.Context, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.projects[id]; !ok {
+		return domain.ErrNotFound
+	}
+	// Delete related data
+	for issueID, issue := range r.issues {
+		if issue.ProjectID == id {
+			delete(r.issues, issueID)
+		}
+	}
+	for snapID, snap := range r.snapshots {
+		if snap.ProjectID == id {
+			delete(r.snapshots, snapID)
+		}
+	}
+	for ansID, ans := range r.answers {
+		if ans.ProjectID == id {
+			delete(r.answers, ansID)
+		}
+	}
+	for qID, q := range r.questions {
+		if q.ProjectID == id {
+			delete(r.questions, qID)
+		}
+	}
+	delete(r.projects, id)
+	return nil
+}
+
 func (r *Repository) UpdateProject(ctx context.Context, project *domain.Project) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

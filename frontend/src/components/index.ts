@@ -1,3 +1,5 @@
+export { Dashboard } from './Dashboard';
+export { IssuesPanel } from './IssuesPanel';
 export { ModelSelector } from './ModelSelector';
 export { ProjectSelector } from './ProjectSelector';
 export { QuestionCard } from './QuestionCard';

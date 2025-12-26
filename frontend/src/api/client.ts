@@ -1,4 +1,5 @@
 import type {
+  ListProjectsResponse,
   CreateProjectResponse,
   GetProjectResponse,
   ListQuestionsResponse,
@@ -54,6 +55,21 @@ class ApiClient {
   }
 
   // Projects
+  async listProjects(): Promise<ListProjectsResponse> {
+    return this.request<ListProjectsResponse>('/projects');
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to delete project');
+    }
+  }
+
   async createProject(name: string, mode: ProjectMode = 'advanced'): Promise<CreateProjectResponse> {
     return this.request<CreateProjectResponse>('/projects', {
       method: 'POST',

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api/client';
-import { ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
+import { Dashboard, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
 import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion } from './types';
 import './App.css';
 
 function App() {
   // State
+  const [projects, setProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [snapshot, setSnapshot] = useState<SpecSnapshot | null>(null);
@@ -18,6 +19,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   // Loading states
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [loadingProject, setLoadingProject] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [compiling, setCompiling] = useState(false);
@@ -43,13 +45,27 @@ function App() {
     loadModels();
   }, []);
 
-  // Load project from localStorage
+  const loadProjects = useCallback(async () => {
+    setLoadingProjects(true);
+    try {
+      const { projects } = await api.listProjects();
+      setProjects(projects);
+    } catch (err) {
+      console.warn('Failed to load projects:', err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []);
+
+  // Load projects and check for saved project on mount
   useEffect(() => {
     const savedProjectId = localStorage.getItem('specbuilder_project_id');
     if (savedProjectId) {
       loadProject(savedProjectId);
+    } else {
+      loadProjects();
     }
-  }, []);
+  }, [loadProjects]);
 
   const loadProject = async (projectId: string) => {
     setLoadingProject(true);
@@ -116,6 +132,16 @@ function App() {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     }
   }, []);
+
+  const handleDeleteProject = useCallback(async (projectId: string) => {
+    setError(null);
+    try {
+      await api.deleteProject(projectId);
+      await loadProjects();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete project');
+    }
+  }, [loadProjects]);
 
   const handleSubmitAnswer = useCallback(
     async (questionId: string, value: unknown) => {
@@ -190,7 +216,8 @@ function App() {
     setIssues([]);
     setSuggestions([]);
     setError(null);
-  }, []);
+    loadProjects();
+  }, [loadProjects]);
 
   const answeredCount = questions.filter((q) => q.status === 'answered').length;
   const isDisabled = !project || compiling || generating;
@@ -201,8 +228,8 @@ function App() {
         <h1>Spec Builder</h1>
         <p>Question-driven specification compiler for AI coding agents</p>
         {project && (
-          <button className="new-project-btn" onClick={handleNewProject}>
-            New Project
+          <button className="dashboard-btn" onClick={handleNewProject}>
+            Dashboard
           </button>
         )}
       </header>
@@ -214,26 +241,26 @@ function App() {
         </div>
       )}
 
-      <div className="app-content">
-        <section className="project-section">
-          <ProjectSelector
-            project={project}
-            onCreateProject={handleCreateProject}
-            loading={loadingProject}
-          />
-          {providers.length > 0 && (
-            <ModelSelector
-              providers={providers}
-              selectedProvider={selectedProvider}
-              selectedModel={selectedModel}
-              onSelect={handleModelSelect}
-              disabled={compiling || generating}
+      {project ? (
+        <div className="app-content">
+          <section className="project-section">
+            <ProjectSelector
+              project={project}
+              onCreateProject={handleCreateProject}
+              loading={loadingProject}
             />
-          )}
-        </section>
+            {providers.length > 0 && (
+              <ModelSelector
+                providers={providers}
+                selectedProvider={selectedProvider}
+                selectedModel={selectedModel}
+                onSelect={handleModelSelect}
+                disabled={compiling || generating}
+              />
+            )}
+          </section>
 
-        {project && (
-          <>
+          <div className="main-columns">
             <section className="questions-section">
               <h2>
                 Questions{' '}
@@ -255,16 +282,25 @@ function App() {
             <section className="spec-section">
               <SpecViewer
                 snapshot={snapshot}
-                issues={issues}
                 onCompile={handleCompile}
                 compiling={compiling}
                 disabled={isDisabled || answeredCount === 0}
                 exportUrl={snapshot ? api.getExportUrl(project.id, snapshot.id) : null}
               />
             </section>
-          </>
-        )}
-      </div>
+          </div>
+
+          <IssuesPanel issues={issues} />
+        </div>
+      ) : (
+        <Dashboard
+          projects={projects}
+          onSelectProject={loadProject}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+          loading={loadingProjects || loadingProject}
+        />
+      )}
     </div>
   );
 }

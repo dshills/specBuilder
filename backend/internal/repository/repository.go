@@ -12,7 +12,9 @@ type Repository interface {
 	// Projects
 	CreateProject(ctx context.Context, project *domain.Project) error
 	GetProject(ctx context.Context, id uuid.UUID) (*domain.Project, error)
+	ListProjects(ctx context.Context) ([]*domain.Project, error)
 	UpdateProject(ctx context.Context, project *domain.Project) error
+	DeleteProject(ctx context.Context, id uuid.UUID) error
 	GetLatestSnapshotID(ctx context.Context, projectID uuid.UUID) (*uuid.UUID, error)
 
 	// Questions

@@ -37,8 +37,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /models", h.ListModels)
 
 	// Projects
+	mux.HandleFunc("GET /projects", h.ListProjects)
 	mux.HandleFunc("POST /projects", h.CreateProject)
 	mux.HandleFunc("GET /projects/{projectId}", h.GetProject)
+	mux.HandleFunc("DELETE /projects/{projectId}", h.DeleteProject)
 
 	// Questions
 	mux.HandleFunc("GET /projects/{projectId}/questions", h.ListQuestions)
@@ -114,6 +116,26 @@ type createProjectRequest struct {
 	Name string `json:"name"`
 	Mode string `json:"mode"` // "basic" or "advanced" (default: advanced)
 }
+
+// ListProjects
+
+type listProjectsResponse struct {
+	Projects []*domain.Project `json:"projects"`
+}
+
+func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
+	projects, err := h.repo.ListProjects(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list projects")
+		return
+	}
+	if projects == nil {
+		projects = []*domain.Project{}
+	}
+	writeJSON(w, http.StatusOK, listProjectsResponse{Projects: projects})
+}
+
+// CreateProject
 
 type createProjectResponse struct {
 	ProjectID uuid.UUID `json:"project_id"`
@@ -245,6 +267,26 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, getProjectResponse{Project: project, LatestSnapshotID: latestID})
+}
+
+func (h *Handler) DeleteProject(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("projectId")
+	id, err := parseUUID(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_uuid", "Invalid project ID format")
+		return
+	}
+
+	if err := h.repo.DeleteProject(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "Project not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete project")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Questions

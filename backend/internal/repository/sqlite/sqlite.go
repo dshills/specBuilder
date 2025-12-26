@@ -133,10 +133,54 @@ func (r *SQLiteRepository) GetProject(ctx context.Context, id uuid.UUID) (*domai
 	return scanProject(row)
 }
 
+func (r *SQLiteRepository) ListProjects(ctx context.Context) ([]*domain.Project, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, mode, created_at, updated_at FROM projects ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []*domain.Project
+	for rows.Next() {
+		p, err := scanProjectRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, p)
+	}
+	return projects, rows.Err()
+}
+
 func (r *SQLiteRepository) UpdateProject(ctx context.Context, p *domain.Project) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE projects SET name = ?, updated_at = ? WHERE id = ?`,
 		p.Name, p.UpdatedAt.Format(time.RFC3339), p.ID.String())
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (r *SQLiteRepository) DeleteProject(ctx context.Context, id uuid.UUID) error {
+	idStr := id.String()
+	// Delete in order respecting foreign key constraints
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM issues WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM snapshots WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM answers WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM questions WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	res, err := r.db.ExecContext(ctx, `DELETE FROM projects WHERE id = ?`, idStr)
 	if err != nil {
 		return err
 	}
@@ -172,6 +216,32 @@ func scanProject(row *sql.Row) (*domain.Project, error) {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrNotFound
 		}
+		return nil, err
+	}
+	var err error
+	p.ID, err = uuid.Parse(idStr)
+	if err != nil {
+		return nil, err
+	}
+	p.Mode = domain.ProjectMode(modeStr)
+	if p.Mode == "" {
+		p.Mode = domain.ProjectModeAdvanced
+	}
+	p.CreatedAt, err = time.Parse(time.RFC3339, createdStr)
+	if err != nil {
+		return nil, err
+	}
+	p.UpdatedAt, err = time.Parse(time.RFC3339, updatedStr)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func scanProjectRow(rows *sql.Rows) (*domain.Project, error) {
+	var p domain.Project
+	var idStr, modeStr, createdStr, updatedStr string
+	if err := rows.Scan(&idStr, &p.Name, &modeStr, &createdStr, &updatedStr); err != nil {
 		return nil, err
 	}
 	var err error
@@ -716,10 +786,53 @@ func (t *txRepository) GetProject(ctx context.Context, id uuid.UUID) (*domain.Pr
 	return scanProject(row)
 }
 
+func (t *txRepository) ListProjects(ctx context.Context) ([]*domain.Project, error) {
+	rows, err := t.queryContext(ctx, `SELECT id, name, mode, created_at, updated_at FROM projects ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []*domain.Project
+	for rows.Next() {
+		p, err := scanProjectRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, p)
+	}
+	return projects, rows.Err()
+}
+
 func (t *txRepository) UpdateProject(ctx context.Context, p *domain.Project) error {
 	res, err := t.execContext(ctx,
 		`UPDATE projects SET name = ?, updated_at = ? WHERE id = ?`,
 		p.Name, p.UpdatedAt.Format(time.RFC3339), p.ID.String())
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (t *txRepository) DeleteProject(ctx context.Context, id uuid.UUID) error {
+	idStr := id.String()
+	if _, err := t.execContext(ctx, `DELETE FROM issues WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	if _, err := t.execContext(ctx, `DELETE FROM snapshots WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	if _, err := t.execContext(ctx, `DELETE FROM answers WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	if _, err := t.execContext(ctx, `DELETE FROM questions WHERE project_id = ?`, idStr); err != nil {
+		return err
+	}
+	res, err := t.execContext(ctx, `DELETE FROM projects WHERE id = ?`, idStr)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SpecViewer } from './SpecViewer';
-import type { SpecSnapshot, Issue } from '../types';
+import type { SpecSnapshot } from '../types';
 
 const createSnapshot = (overrides: Partial<SpecSnapshot> = {}): SpecSnapshot => ({
   id: 's1',
@@ -18,26 +18,12 @@ const createSnapshot = (overrides: Partial<SpecSnapshot> = {}): SpecSnapshot => 
   ...overrides,
 });
 
-const createIssue = (overrides: Partial<Issue> = {}): Issue => ({
-  id: 'i1',
-  project_id: 'p1',
-  snapshot_id: 's1',
-  type: 'missing_info',
-  severity: 'warning',
-  message: 'Missing data model details',
-  related_spec_paths: ['/data_model'],
-  related_question_ids: [],
-  created_at: '2024-01-01T00:00:00Z',
-  ...overrides,
-});
-
 describe('SpecViewer', () => {
   describe('empty state', () => {
     it('shows empty message when no snapshot', () => {
       render(
         <SpecViewer
           snapshot={null}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -55,7 +41,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={null}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -73,7 +58,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={null}
-          issues={[]}
           onCompile={onCompile}
           compiling={false}
           disabled={false}
@@ -89,7 +73,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={null}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={true}
           disabled={false}
@@ -104,7 +87,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={null}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={true}
@@ -119,7 +101,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={null}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={true}
           disabled={false}
@@ -140,7 +121,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={snapshot}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -160,7 +140,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={snapshot}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -179,7 +158,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={snapshot}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -191,107 +169,11 @@ describe('SpecViewer', () => {
     });
   });
 
-  describe('issues panel', () => {
-    it('does not show issues panel when no issues', () => {
-      render(
-        <SpecViewer
-          snapshot={createSnapshot()}
-          issues={[]}
-          onCompile={vi.fn()}
-          compiling={false}
-          disabled={false}
-          exportUrl={null}
-        />
-      );
-
-      expect(screen.queryByText(/Issues \(/)).not.toBeInTheDocument();
-    });
-
-    it('shows issues panel when issues exist', () => {
-      const issues = [
-        createIssue({ message: 'Missing data model' }),
-        createIssue({ id: 'i2', message: 'Incomplete scope' }),
-      ];
-
-      render(
-        <SpecViewer
-          snapshot={createSnapshot()}
-          issues={issues}
-          onCompile={vi.fn()}
-          compiling={false}
-          disabled={false}
-          exportUrl={null}
-        />
-      );
-
-      expect(screen.getByText('Issues (2)')).toBeInTheDocument();
-    });
-
-    it('displays issue messages', () => {
-      const issues = [
-        createIssue({ message: 'Missing data model details' }),
-      ];
-
-      render(
-        <SpecViewer
-          snapshot={createSnapshot()}
-          issues={issues}
-          onCompile={vi.fn()}
-          compiling={false}
-          disabled={false}
-          exportUrl={null}
-        />
-      );
-
-      expect(screen.getByText('Missing data model details')).toBeInTheDocument();
-    });
-
-    it('displays issue type', () => {
-      const issues = [
-        createIssue({ type: 'semantic_conflict' }),
-      ];
-
-      render(
-        <SpecViewer
-          snapshot={createSnapshot()}
-          issues={issues}
-          onCompile={vi.fn()}
-          compiling={false}
-          disabled={false}
-          exportUrl={null}
-        />
-      );
-
-      expect(screen.getByText('semantic_conflict')).toBeInTheDocument();
-    });
-
-    it('displays related spec paths', () => {
-      const issues = [
-        createIssue({ related_spec_paths: ['/api/endpoints', '/data_model'] }),
-      ];
-
-      render(
-        <SpecViewer
-          snapshot={createSnapshot()}
-          issues={issues}
-          onCompile={vi.fn()}
-          compiling={false}
-          disabled={false}
-          exportUrl={null}
-        />
-      );
-
-      expect(screen.getByText('/api/endpoints')).toBeInTheDocument();
-      expect(screen.getByText('/data_model')).toBeInTheDocument();
-    });
-  });
-
   describe('export button', () => {
     it('does not show export button when no exportUrl', () => {
       render(
         <SpecViewer
           snapshot={createSnapshot()}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -306,7 +188,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={createSnapshot()}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -321,7 +202,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={createSnapshot()}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
@@ -337,7 +217,6 @@ describe('SpecViewer', () => {
       render(
         <SpecViewer
           snapshot={createSnapshot()}
-          issues={[]}
           onCompile={vi.fn()}
           compiling={false}
           disabled={false}
