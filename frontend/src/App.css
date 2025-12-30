@@ -1137,3 +1137,63 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Clickable issues */
+.issue.clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.issue.clickable:hover {
+  filter: brightness(1.2);
+}
+
+.issue.clickable:focus {
+  outline: 2px solid #5a5aaa;
+  outline-offset: 2px;
+}
+
+.issue-question-hint {
+  font-size: 0.75rem;
+  color: #8ab;
+  margin-left: auto;
+  font-style: italic;
+}
+
+/* Highlighted question card */
+.question-card.highlighted {
+  border-color: #5a8aaa;
+  box-shadow: 0 0 0 2px rgba(90, 138, 170, 0.3);
+  animation: highlight-pulse 2s ease-in-out;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(90, 138, 170, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(90, 138, 170, 0.5);
+  }
+}
+
+.clear-highlight {
+  background: transparent;
+  border: 1px solid #4a4a6a;
+  color: #888;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.clear-highlight:hover {
+  border-color: #6a6a9a;
+  color: #fff;
+  background: #2a2a4a;
+}

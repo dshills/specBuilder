@@ -4,8 +4,10 @@ import { QuestionCard } from './QuestionCard';
 interface QuestionListProps {
   questions: Question[];
   suggestions: Suggestion[];
+  highlightedIds: string[];
   onSubmitAnswer: (questionId: string, value: unknown) => Promise<void>;
   onGenerateMore: () => Promise<void>;
+  onClearHighlight: () => void;
   disabled: boolean;
   loading: boolean;
   generating: boolean;
@@ -15,8 +17,10 @@ interface QuestionListProps {
 export function QuestionList({
   questions,
   suggestions,
+  highlightedIds,
   onSubmitAnswer,
   onGenerateMore,
+  onClearHighlight,
   disabled,
   loading,
   generating,
@@ -71,7 +75,9 @@ export function QuestionList({
                 key={q.id}
                 question={q}
                 suggestion={suggestionMap.get(q.id)}
+                highlighted={highlightedIds.includes(q.id)}
                 onSubmitAnswer={onSubmitAnswer}
+                onClearHighlight={onClearHighlight}
                 disabled={disabled}
               />
             ))
@@ -85,7 +91,9 @@ export function QuestionList({
             <QuestionCard
               key={q.id}
               question={q}
+              highlighted={highlightedIds.includes(q.id)}
               onSubmitAnswer={onSubmitAnswer}
+              onClearHighlight={onClearHighlight}
               disabled={true}
             />
           ))}

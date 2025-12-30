@@ -29,6 +29,9 @@ function App() {
   // Error state
   const [error, setError] = useState<string | null>(null);
 
+  // Highlighted questions (from clicking issues)
+  const [highlightedQuestionIds, setHighlightedQuestionIds] = useState<string[]>([]);
+
   // Load models on mount
   useEffect(() => {
     const loadModels = async () => {
@@ -216,8 +219,17 @@ function App() {
     setIssues([]);
     setSuggestions([]);
     setError(null);
+    setHighlightedQuestionIds([]);
     loadProjects();
   }, [loadProjects]);
+
+  const handleIssueClick = useCallback((questionIds: string[]) => {
+    setHighlightedQuestionIds(questionIds);
+  }, []);
+
+  const handleClearHighlight = useCallback(() => {
+    setHighlightedQuestionIds([]);
+  }, []);
 
   const answeredCount = questions.filter((q) => q.status === 'answered').length;
   const isDisabled = !project || compiling || generating;
@@ -271,8 +283,10 @@ function App() {
               <QuestionList
                 questions={questions}
                 suggestions={suggestions}
+                highlightedIds={highlightedQuestionIds}
                 onSubmitAnswer={handleSubmitAnswer}
                 onGenerateMore={handleGenerateMore}
+                onClearHighlight={handleClearHighlight}
                 disabled={isDisabled}
                 loading={loadingQuestions}
                 generating={generating}
@@ -291,7 +305,7 @@ function App() {
             </section>
           </div>
 
-          <IssuesPanel issues={issues} />
+          <IssuesPanel issues={issues} onIssueClick={handleIssueClick} />
         </div>
       ) : (
         <Dashboard

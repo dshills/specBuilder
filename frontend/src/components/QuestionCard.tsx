@@ -1,19 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Question, Suggestion } from '../types';
 
 interface QuestionCardProps {
   question: Question;
   suggestion?: Suggestion;
+  highlighted?: boolean;
   onSubmitAnswer: (questionId: string, value: unknown) => Promise<void>;
+  onClearHighlight?: () => void;
   disabled: boolean;
 }
 
 export function QuestionCard({
   question,
   suggestion,
+  highlighted,
   onSubmitAnswer,
+  onClearHighlight,
   disabled,
 }: QuestionCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlighted]);
   const [answer, setAnswer] = useState<string | string[]>(
     question.type === 'multi' ? [] : ''
   );
@@ -141,7 +152,10 @@ export function QuestionCard({
   };
 
   return (
-    <div className={`question-card ${isAnswered ? 'answered' : ''}`}>
+    <div
+      ref={cardRef}
+      className={`question-card ${isAnswered ? 'answered' : ''} ${highlighted ? 'highlighted' : ''}`}
+    >
       <div className="question-header">
         <span className="question-type">{question.type}</span>
         {question.tags.map((tag) => (
@@ -152,6 +166,15 @@ export function QuestionCard({
         <span className={`question-status ${question.status}`}>
           {question.status}
         </span>
+        {highlighted && onClearHighlight && (
+          <button
+            className="clear-highlight"
+            onClick={onClearHighlight}
+            title="Dismiss highlight"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <p className="question-text">{question.text}</p>
