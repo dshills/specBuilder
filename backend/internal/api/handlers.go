@@ -428,12 +428,12 @@ func (h *Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
 		// Log but don't fail
 	}
 
-	// TODO: Trigger compilation if compile != false (default true)
-	// For M1, we skip compilation (handled in M3)
+	// Compilation is triggered separately via POST /projects/{id}/compile
+	// or POST /projects/{id}/next-questions which includes compilation
 
 	writeJSON(w, http.StatusOK, submitAnswerResponse{
 		AnswerID:   answer.ID,
-		SnapshotID: nil, // No compilation in M1
+		SnapshotID: nil,
 		Issues:     []*domain.Issue{},
 	})
 }
@@ -1051,7 +1051,7 @@ func (h *Handler) ExportPack(w http.ResponseWriter, r *http.Request) {
 	input := export.Input{
 		Project:   project,
 		Snapshot:  snapshot,
-		Trace:     nil, // TODO: get trace from snapshot if stored
+		Trace:     snapshot.Trace,
 		QABundles: qaBundles,
 	}
 
