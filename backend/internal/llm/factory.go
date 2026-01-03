@@ -43,6 +43,9 @@ type Factory struct {
 
 // NewFactory creates a new LLM client factory.
 // It fetches available models from each configured provider's API.
+// Environment variables:
+//   - SPECBUILDER_LLM_PROVIDER: Override default provider (anthropic, google, openai)
+//   - SPECBUILDER_LLM_MODEL: Override default model
 func NewFactory() *Factory {
 	f := &Factory{
 		geminiKey:    os.Getenv("GEMINI_API_KEY"),
@@ -65,7 +68,37 @@ func NewFactory() *Factory {
 		f.defaultMod = f.getFirstModel(ProviderOpenAI, "gpt-4o")
 	}
 
+	// Override defaults with environment variables if set
+	if envProvider := os.Getenv("SPECBUILDER_LLM_PROVIDER"); envProvider != "" {
+		provider := Provider(envProvider)
+		if f.isProviderAvailable(provider) {
+			f.defaultPrv = provider
+			// Update model to match provider if not explicitly overridden
+			f.defaultMod = f.getFirstModel(provider, f.defaultMod)
+		} else {
+			log.Printf("Warning: SPECBUILDER_LLM_PROVIDER=%s is not available (missing API key), using %s", envProvider, f.defaultPrv)
+		}
+	}
+
+	if envModel := os.Getenv("SPECBUILDER_LLM_MODEL"); envModel != "" {
+		f.defaultMod = envModel
+	}
+
 	return f
+}
+
+// isProviderAvailable checks if a provider has an API key configured.
+func (f *Factory) isProviderAvailable(provider Provider) bool {
+	switch provider {
+	case ProviderAnthropic:
+		return f.anthropicKey != ""
+	case ProviderGoogle:
+		return f.geminiKey != ""
+	case ProviderOpenAI:
+		return f.openAIKey != ""
+	default:
+		return false
+	}
 }
 
 // fetchAllProviders fetches models from all configured providers.

@@ -1047,11 +1047,17 @@ func (h *Handler) ExportPack(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Extract trace from spec JSON (trace is embedded in the ProjectImplementationSpec)
+	var specWithTrace struct {
+		Trace json.RawMessage `json:"trace"`
+	}
+	_ = json.Unmarshal(snapshot.Spec, &specWithTrace)
+
 	// Generate pack
 	input := export.Input{
 		Project:   project,
 		Snapshot:  snapshot,
-		Trace:     snapshot.Trace,
+		Trace:     specWithTrace.Trace,
 		QABundles: qaBundles,
 	}
 

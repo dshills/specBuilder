@@ -25,13 +25,55 @@ func loadSpecSchema() (string, error) {
 	return specSchemaJSON, nil
 }
 
+func logConfig() {
+	log.Println("=== SpecBuilder Configuration ===")
+
+	// Log SPECBUILDER_* env vars
+	envVars := []struct {
+		name         string
+		defaultValue string
+	}{
+		{"SPECBUILDER_API_PORT", "8080"},
+		{"SPECBUILDER_DB_PATH", "data/specbuilder.db"},
+		{"SPECBUILDER_LLM_PROVIDER", "(auto-detect)"},
+		{"SPECBUILDER_LLM_MODEL", "(auto-detect)"},
+	}
+
+	for _, ev := range envVars {
+		value := os.Getenv(ev.name)
+		if value == "" {
+			log.Printf("  %s: %s (default)", ev.name, ev.defaultValue)
+		} else {
+			log.Printf("  %s: %s", ev.name, value)
+		}
+	}
+
+	// Log API key availability (not the actual keys)
+	apiKeys := []string{"ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"}
+	var configured []string
+	for _, key := range apiKeys {
+		if os.Getenv(key) != "" {
+			configured = append(configured, key)
+		}
+	}
+	if len(configured) > 0 {
+		log.Printf("  API keys configured: %v", configured)
+	} else {
+		log.Println("  API keys configured: (none)")
+	}
+
+	log.Println("=================================")
+}
+
 func main() {
-	port := os.Getenv("PORT")
+	logConfig()
+
+	port := os.Getenv("SPECBUILDER_API_PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	dbPath := os.Getenv("DB_PATH")
+	dbPath := os.Getenv("SPECBUILDER_DB_PATH")
 	if dbPath == "" {
 		// Default to data directory in project root
 		dbPath = filepath.Join("data", "specbuilder.db")
