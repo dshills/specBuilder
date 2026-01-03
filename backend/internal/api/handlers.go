@@ -54,6 +54,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Compilation
 	mux.HandleFunc("POST /projects/{projectId}/compile", h.Compile)
+	mux.HandleFunc("GET /projects/{projectId}/compile/stream", h.CompileStream)
 
 	// Snapshots
 	mux.HandleFunc("GET /projects/{projectId}/snapshots", h.ListSnapshots)
@@ -291,8 +292,13 @@ func (h *Handler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 
 // Questions
 
+type questionWithAnswer struct {
+	*domain.Question
+	CurrentAnswer *domain.Answer `json:"current_answer,omitempty"`
+}
+
 type listQuestionsResponse struct {
-	Questions []*domain.Question `json:"questions"`
+	Questions []*questionWithAnswer `json:"questions"`
 }
 
 func (h *Handler) ListQuestions(w http.ResponseWriter, r *http.Request) {
@@ -330,11 +336,24 @@ func (h *Handler) ListQuestions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if questions == nil {
-		questions = []*domain.Question{}
+	// Fetch latest answers for answered questions
+	answers, _ := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
+	answerMap := make(map[uuid.UUID]*domain.Answer)
+	for _, a := range answers {
+		answerMap[a.QuestionID] = a
 	}
 
-	writeJSON(w, http.StatusOK, listQuestionsResponse{Questions: questions})
+	// Build response with answers included
+	result := make([]*questionWithAnswer, len(questions))
+	for i, q := range questions {
+		qwa := &questionWithAnswer{Question: q}
+		if q.Status == domain.QuestionStatusAnswered {
+			qwa.CurrentAnswer = answerMap[q.ID]
+		}
+		result[i] = qwa
+	}
+
+	writeJSON(w, http.StatusOK, listQuestionsResponse{Questions: result})
 }
 
 // Answers
@@ -668,6 +687,176 @@ func (h *Handler) Compile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, compileResponse{
 		SnapshotID: snapshot.ID,
 		Issues:     issues,
+	})
+}
+
+// CompileStream handles compilation with SSE progress updates.
+// SSE event types: "stage" for progress, "complete" for success, "error" for failure
+type compileStageEvent struct {
+	Stage      string  `json:"stage"`                 // "preparing", "compiling", "saving", "validating", "complete"
+	Message    string  `json:"message"`               // Human-readable description
+	ElapsedMs  int64   `json:"elapsed_ms"`            // Time elapsed for this stage
+	TotalMs    int64   `json:"total_ms"`              // Total time elapsed since start
+	SnapshotID *string `json:"snapshot_id,omitempty"` // Set when complete
+	IssueCount *int    `json:"issue_count,omitempty"` // Set when complete
+}
+
+func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Helper to send SSE event
+	sendEvent := func(eventType string, data interface{}) {
+		jsonData, _ := json.Marshal(data)
+		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, jsonData)
+		flusher.Flush()
+	}
+
+	startTime := time.Now()
+	stageStart := startTime
+
+	sendStage := func(stage, message string) {
+		now := time.Now()
+		sendEvent("stage", compileStageEvent{
+			Stage:     stage,
+			Message:   message,
+			ElapsedMs: now.Sub(stageStart).Milliseconds(),
+			TotalMs:   now.Sub(startTime).Milliseconds(),
+		})
+		stageStart = now
+	}
+
+	// Parse project ID
+	idStr := r.PathValue("projectId")
+	projectID, err := parseUUID(idStr)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
+		return
+	}
+
+	// Parse query params for provider/model
+	provider := llm.Provider(r.URL.Query().Get("provider"))
+	model := r.URL.Query().Get("model")
+
+	// Stage 1: Preparing
+	sendStage("preparing", "Loading project and answers...")
+
+	if h.compiler == nil {
+		sendEvent("error", map[string]string{"error": "service_unavailable", "message": "Compilation service not configured"})
+		return
+	}
+
+	project, err := h.repo.GetProject(r.Context(), projectID)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "not_found", "message": "Project not found"})
+		return
+	}
+
+	answers, err := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "internal_error", "message": "Failed to get answers"})
+		return
+	}
+
+	if len(answers) == 0 {
+		sendEvent("error", map[string]string{"error": "no_answers", "message": "No answers to compile"})
+		return
+	}
+
+	// Build Q&A bundles
+	qaBundles := make([]compiler.QABundle, 0, len(answers))
+	for _, a := range answers {
+		q, err := h.repo.GetQuestion(r.Context(), a.QuestionID)
+		if err != nil {
+			continue
+		}
+		qaBundles = append(qaBundles, compiler.QABundle{
+			QuestionID:    q.ID,
+			QuestionText:  q.Text,
+			QuestionType:  string(q.Type),
+			QuestionTags:  q.Tags,
+			QuestionPaths: q.SpecPaths,
+			AnswerID:      a.ID,
+			AnswerValue:   a.Value,
+			AnswerVersion: a.Version,
+		})
+	}
+
+	var currentSpec json.RawMessage
+	if latestID, _ := h.repo.GetLatestSnapshotID(r.Context(), projectID); latestID != nil {
+		if snap, err := h.repo.GetSnapshot(r.Context(), *latestID); err == nil {
+			currentSpec = snap.Spec
+		}
+	}
+
+	// Stage 2: Compiling
+	sendStage("compiling", fmt.Sprintf("Generating spec from %d Q&A pairs...", len(qaBundles)))
+
+	output, err := h.compiler.Compile(r.Context(), compiler.CompileInput{
+		Project:     project,
+		QABundles:   qaBundles,
+		CurrentSpec: currentSpec,
+		Provider:    provider,
+		Model:       model,
+	})
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "compilation_failed", "message": err.Error()})
+		return
+	}
+
+	// Stage 3: Saving
+	sendStage("saving", "Saving compiled specification...")
+
+	now := time.Now().UTC()
+	snapshot := &domain.SpecSnapshot{
+		ID:          uuid.New(),
+		ProjectID:   projectID,
+		Spec:        output.Spec,
+		CreatedAt:   now,
+		DerivedFrom: output.DerivedFrom,
+		Compiler:    output.Compiler,
+	}
+
+	if err := h.repo.CreateSnapshot(r.Context(), snapshot); err != nil {
+		sendEvent("error", map[string]string{"error": "internal_error", "message": "Failed to save snapshot"})
+		return
+	}
+
+	// Stage 4: Validating
+	sendStage("validating", "Analyzing specification for issues...")
+
+	issueDrafts, err := h.compiler.Validate(r.Context(), project, output.Spec, output.Trace, qaBundles)
+	if err != nil {
+		issueDrafts = nil // Validation is optional
+	}
+
+	issues := compiler.HydrateIssues(issueDrafts, projectID, snapshot.ID)
+	for _, issue := range issues {
+		h.repo.CreateIssue(r.Context(), issue)
+	}
+
+	project.UpdatedAt = now
+	h.repo.UpdateProject(r.Context(), project)
+
+	// Stage 5: Complete
+	snapshotIDStr := snapshot.ID.String()
+	issueCount := len(issues)
+	sendEvent("complete", compileStageEvent{
+		Stage:      "complete",
+		Message:    fmt.Sprintf("Compilation complete with %d issues", issueCount),
+		ElapsedMs:  time.Since(stageStart).Milliseconds(),
+		TotalMs:    time.Since(startTime).Milliseconds(),
+		SnapshotID: &snapshotIDStr,
+		IssueCount: &issueCount,
 	})
 }
 

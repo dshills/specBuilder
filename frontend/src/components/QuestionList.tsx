@@ -94,7 +94,7 @@ export function QuestionList({
               highlighted={highlightedIds.includes(q.id)}
               onSubmitAnswer={onSubmitAnswer}
               onClearHighlight={onClearHighlight}
-              disabled={true}
+              disabled={disabled}
             />
           ))}
         </div>

@@ -26,7 +26,7 @@ func NewOpenAIClient(apiKey, model string) *OpenAIClient {
 	return &OpenAIClient{
 		apiKey: apiKey,
 		model:  model,
-		client: &http.Client{Timeout: 120 * time.Second},
+		client: &http.Client{Timeout: 300 * time.Second},
 	}
 }
 

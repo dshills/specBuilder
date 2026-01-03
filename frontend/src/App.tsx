@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api/client';
 import { Dashboard, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
-import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion } from './types';
+import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion, CompileStageEvent } from './types';
 import './App.css';
 
 function App() {
@@ -23,8 +23,12 @@ function App() {
   const [loadingProject, setLoadingProject] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [compiling, setCompiling] = useState(false);
+  const [compileProgress, setCompileProgress] = useState<CompileStageEvent | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // Ref for SSE cleanup
+  const compileCleanupRef = useRef<(() => void) | null>(null);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -186,24 +190,49 @@ function App() {
     }
   }, [project, refreshSuggestions]);
 
-  const handleCompile = useCallback(async () => {
+  const handleCompile = useCallback(() => {
     if (!project) return;
-    setCompiling(true);
-    setError(null);
-    try {
-      const { snapshot_id, issues: newIssues } = await api.compile(
-        project.id,
-        selectedProvider || undefined,
-        selectedModel || undefined
-      );
-      const { snapshot } = await api.getSnapshot(project.id, snapshot_id);
-      setSnapshot(snapshot);
-      setIssues(newIssues);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to compile');
-    } finally {
-      setCompiling(false);
+
+    // Clean up any existing SSE connection
+    if (compileCleanupRef.current) {
+      compileCleanupRef.current();
     }
+
+    setCompiling(true);
+    setCompileProgress(null);
+    setError(null);
+
+    const cleanup = api.compileStream(
+      project.id,
+      // onStage
+      (event) => {
+        setCompileProgress(event);
+      },
+      // onError
+      (event) => {
+        setError(event.message);
+        setCompiling(false);
+        setCompileProgress(null);
+      },
+      // onComplete
+      async (event) => {
+        if (event.snapshot_id) {
+          try {
+            const { snapshot, issues: newIssues } = await api.getSnapshot(project.id, event.snapshot_id);
+            setSnapshot(snapshot);
+            setIssues(newIssues);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load snapshot');
+          }
+        }
+        setCompiling(false);
+        setCompileProgress(null);
+      },
+      selectedProvider || undefined,
+      selectedModel || undefined
+    );
+
+    compileCleanupRef.current = cleanup;
   }, [project, selectedProvider, selectedModel]);
 
   const handleModelSelect = useCallback((provider: Provider, model: string) => {
@@ -299,6 +328,7 @@ function App() {
                 snapshot={snapshot}
                 onCompile={handleCompile}
                 compiling={compiling}
+                compileProgress={compileProgress}
                 disabled={isDisabled || answeredCount === 0}
                 exportUrl={snapshot ? api.getExportUrl(project.id, snapshot.id) : null}
               />

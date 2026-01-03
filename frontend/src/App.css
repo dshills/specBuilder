@@ -428,6 +428,97 @@ body {
   background: #5a5abb;
 }
 
+/* Answer actions container */
+.answer-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Edit/Cancel buttons */
+.edit-answer {
+  background: #3a5a6a;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.edit-answer:hover:not(:disabled) {
+  background: #4a6a7a;
+}
+
+.edit-answer:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-edit {
+  background: #4a3a3a;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.cancel-edit:hover:not(:disabled) {
+  background: #5a4a4a;
+}
+
+.cancel-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Current answer display */
+.current-answer {
+  background: #1a2a2a;
+  border: 1px solid #2a4a4a;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.current-answer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.current-answer-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6a8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.answer-version {
+  font-size: 0.7rem;
+  color: #888;
+  background: #2a3a3a;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.current-answer-value {
+  background: #141420;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #ddd;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
 .spec-paths {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
@@ -772,14 +863,125 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
+  justify-content: flex-start;
   background: #1a1a2e;
   border: 1px solid #2a2a4a;
   border-radius: 6px;
-  padding: 3rem;
+  padding: 2rem;
   gap: 1rem;
+}
+
+.compile-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.compile-stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #12121f;
+  border-radius: 6px;
+  border: 1px solid #2a2a4a;
+  transition: all 0.3s ease;
+}
+
+.compile-stage.active {
+  background: #1a2a3a;
+  border-color: #4a8a4a;
+}
+
+.compile-stage.complete {
+  background: #1a2a1a;
+  border-color: #3a6a3a;
+}
+
+.compile-stage.pending {
+  opacity: 0.5;
+}
+
+.stage-indicator {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #2a2a4a;
+  flex-shrink: 0;
+}
+
+.compile-stage.active .stage-indicator {
+  background: #4a8a4a;
+}
+
+.compile-stage.complete .stage-indicator {
+  background: #3a6a3a;
+}
+
+.stage-check {
+  color: #8f8;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.stage-number {
+  color: #888;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.stage-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.stage-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.stage-label {
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.compile-stage.pending .stage-label {
+  color: #888;
+}
+
+.stage-message {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.stage-time {
+  flex-shrink: 0;
+}
+
+.elapsed-time {
+  color: #4a8a4a;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.compile-total-time {
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #2a2a4a;
 }
 
 .compile-spinner {

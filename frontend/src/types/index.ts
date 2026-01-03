@@ -25,6 +25,7 @@ export interface Question {
   spec_paths: string[];
   status: QuestionStatus;
   created_at: string;
+  current_answer?: Answer;
 }
 
 export interface Answer {
@@ -150,4 +151,21 @@ export interface Suggestion {
 
 export interface SuggestionsResponse {
   suggestions: Suggestion[];
+}
+
+// Compile streaming types
+export type CompileStage = 'preparing' | 'compiling' | 'saving' | 'validating' | 'complete';
+
+export interface CompileStageEvent {
+  stage: CompileStage;
+  message: string;
+  elapsed_ms: number;
+  total_ms: number;
+  snapshot_id?: string;
+  issue_count?: number;
+}
+
+export interface CompileErrorEvent {
+  error: string;
+  message: string;
 }

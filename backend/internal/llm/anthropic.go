@@ -31,7 +31,7 @@ func NewAnthropicClient(apiKey, model string) *AnthropicClient {
 	return &AnthropicClient{
 		apiKey: apiKey,
 		model:  model,
-		client: &http.Client{Timeout: 180 * time.Second},
+		client: &http.Client{Timeout: 300 * time.Second},
 	}
 }
 
@@ -144,8 +144,17 @@ func (c *AnthropicClient) Complete(ctx context.Context, req Request) (*Response,
 		return nil, fmt.Errorf("%w: %s", ErrProviderError, anthropicResp.Error.Message)
 	}
 
+	log.Printf("Anthropic: stop_reason=%s, input_tokens=%d, output_tokens=%d",
+		anthropicResp.StopReason, anthropicResp.Usage.InputTokens, anthropicResp.Usage.OutputTokens)
+
 	if len(anthropicResp.Content) == 0 {
 		return nil, fmt.Errorf("%w: no content in response", ErrInvalidResponse)
+	}
+
+	// Check if output was truncated due to max_tokens limit
+	if anthropicResp.StopReason == "max_tokens" {
+		return nil, fmt.Errorf("%w: response truncated (hit max_tokens limit of %d, used %d output tokens)",
+			ErrInvalidResponse, maxTokens, anthropicResp.Usage.OutputTokens)
 	}
 
 	// Extract text content

@@ -10,6 +10,16 @@ interface QuestionCardProps {
   disabled: boolean;
 }
 
+function formatAnswerValue(value: unknown, type: string): string | string[] {
+  if (type === 'multi' && Array.isArray(value)) {
+    return value as string[];
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return JSON.stringify(value, null, 2);
+}
+
 export function QuestionCard({
   question,
   suggestion,
@@ -25,10 +35,22 @@ export function QuestionCard({
       cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [highlighted]);
+
+  const isAnswered = question.status === 'answered';
+  const currentAnswerValue = question.current_answer?.value;
+
   const [answer, setAnswer] = useState<string | string[]>(
     question.type === 'multi' ? [] : ''
   );
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  // Initialize answer when entering edit mode
+  useEffect(() => {
+    if (editing && currentAnswerValue !== undefined) {
+      setAnswer(formatAnswerValue(currentAnswerValue, question.type));
+    }
+  }, [editing, currentAnswerValue, question.type]);
 
   const handleSubmit = async () => {
     if (disabled || submitting) return;
@@ -44,9 +66,19 @@ export function QuestionCard({
     try {
       await onSubmitAnswer(question.id, answer);
       setAnswer(question.type === 'multi' ? [] : '');
+      setEditing(false);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditing(false);
+    setAnswer(question.type === 'multi' ? [] : '');
+  };
+
+  const handleStartEdit = () => {
+    setEditing(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -117,8 +149,6 @@ export function QuestionCard({
     }
   };
 
-  const isAnswered = question.status === 'answered';
-
   const applySuggestion = () => {
     if (!suggestion) return;
     const value = suggestion.suggested_value;
@@ -179,7 +209,8 @@ export function QuestionCard({
 
       <p className="question-text">{question.text}</p>
 
-      {!isAnswered && suggestion && (
+      {/* Show suggestion for unanswered questions */}
+      {!isAnswered && !editing && suggestion && (
         <div className="suggestion-box">
           <div className="suggestion-header">
             <span className="suggestion-label">AI Suggestion</span>
@@ -206,22 +237,58 @@ export function QuestionCard({
         </div>
       )}
 
-      {!isAnswered && (
+      {/* Show current answer for answered questions (when not editing) */}
+      {isAnswered && !editing && (
+        <div className="current-answer">
+          <div className="current-answer-header">
+            <span className="current-answer-label">Current Answer</span>
+            {question.current_answer && (
+              <span className="answer-version">v{question.current_answer.version}</span>
+            )}
+          </div>
+          <div className="current-answer-value">
+            {currentAnswerValue !== undefined
+              ? formatSuggestedValue(currentAnswerValue)
+              : '(no value)'}
+          </div>
+          <button
+            className="edit-answer"
+            onClick={handleStartEdit}
+            disabled={disabled}
+          >
+            Edit Answer
+          </button>
+        </div>
+      )}
+
+      {/* Show input for unanswered questions or when editing */}
+      {(!isAnswered || editing) && (
         <>
           {renderInput()}
-          <button
-            className="submit-answer"
-            onClick={handleSubmit}
-            disabled={
-              disabled ||
-              submitting ||
-              (question.type === 'multi'
-                ? (answer as string[]).length === 0
-                : !answer)
-            }
-          >
-            {submitting ? 'Submitting...' : 'Submit Answer'}
-          </button>
+          <div className="answer-actions">
+            <button
+              className="submit-answer"
+              onClick={handleSubmit}
+              disabled={
+                disabled ||
+                submitting ||
+                (question.type === 'multi'
+                  ? (answer as string[]).length === 0
+                  : !answer)
+              }
+            >
+              {submitting ? 'Submitting...' : editing ? 'Save Changes' : 'Submit Answer'}
+            </button>
+            {editing && (
+              <button
+                className="cancel-edit"
+                onClick={handleCancelEdit}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </>
       )}
 

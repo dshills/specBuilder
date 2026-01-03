@@ -26,6 +26,7 @@ describe('SpecViewer', () => {
           snapshot={null}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -43,6 +44,7 @@ describe('SpecViewer', () => {
           snapshot={null}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -60,6 +62,7 @@ describe('SpecViewer', () => {
           snapshot={null}
           onCompile={onCompile}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -75,6 +78,7 @@ describe('SpecViewer', () => {
           snapshot={null}
           onCompile={vi.fn()}
           compiling={true}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -89,6 +93,7 @@ describe('SpecViewer', () => {
           snapshot={null}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={true}
           exportUrl={null}
         />
@@ -103,6 +108,7 @@ describe('SpecViewer', () => {
           snapshot={null}
           onCompile={vi.fn()}
           compiling={true}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -123,6 +129,7 @@ describe('SpecViewer', () => {
           snapshot={snapshot}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -142,6 +149,7 @@ describe('SpecViewer', () => {
           snapshot={snapshot}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -160,6 +168,7 @@ describe('SpecViewer', () => {
           snapshot={snapshot}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -176,6 +185,7 @@ describe('SpecViewer', () => {
           snapshot={createSnapshot()}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl={null}
         />
@@ -190,6 +200,7 @@ describe('SpecViewer', () => {
           snapshot={createSnapshot()}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl="http://localhost:8080/projects/p1/export"
         />
@@ -204,6 +215,7 @@ describe('SpecViewer', () => {
           snapshot={createSnapshot()}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl="http://localhost:8080/projects/p1/export"
         />
@@ -219,6 +231,7 @@ describe('SpecViewer', () => {
           snapshot={createSnapshot()}
           onCompile={vi.fn()}
           compiling={false}
+          compileProgress={null}
           disabled={false}
           exportUrl="http://localhost:8080/projects/p1/export"
         />

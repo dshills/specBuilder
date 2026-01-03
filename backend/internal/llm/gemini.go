@@ -29,7 +29,7 @@ func NewGeminiClient(apiKey, model string) *GeminiClient {
 	return &GeminiClient{
 		apiKey: apiKey,
 		model:  model,
-		client: &http.Client{Timeout: 180 * time.Second},
+		client: &http.Client{Timeout: 300 * time.Second},
 	}
 }
 

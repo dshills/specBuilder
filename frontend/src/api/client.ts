@@ -13,6 +13,8 @@ import type {
   Provider,
   ProjectMode,
   ApiError,
+  CompileStageEvent,
+  CompileErrorEvent,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -152,6 +154,64 @@ class ApiClient {
       },
       300000 // 5 minute timeout
     );
+  }
+
+  // Compilation with SSE progress streaming
+  compileStream(
+    projectId: string,
+    onStage: (event: CompileStageEvent) => void,
+    onError: (event: CompileErrorEvent) => void,
+    onComplete: (event: CompileStageEvent) => void,
+    provider?: Provider,
+    model?: string
+  ): () => void {
+    const params = new URLSearchParams();
+    if (provider) params.set('provider', provider);
+    if (model) params.set('model', model);
+    const query = params.toString();
+    const url = `${API_BASE}/projects/${projectId}/compile/stream${query ? `?${query}` : ''}`;
+
+    const eventSource = new EventSource(url);
+    let hasReceivedEvent = false;
+    let isComplete = false;
+
+    eventSource.addEventListener('stage', (e) => {
+      hasReceivedEvent = true;
+      const data = JSON.parse(e.data) as CompileStageEvent;
+      onStage(data);
+    });
+
+    eventSource.addEventListener('complete', (e) => {
+      hasReceivedEvent = true;
+      isComplete = true;
+      const data = JSON.parse(e.data) as CompileStageEvent;
+      onComplete(data);
+      eventSource.close();
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      if (e instanceof MessageEvent && e.data) {
+        const data = JSON.parse(e.data) as CompileErrorEvent;
+        onError(data);
+        eventSource.close();
+      }
+      // Don't handle generic errors here - let onerror handle them
+    });
+
+    eventSource.onerror = () => {
+      // Only report error if we haven't completed successfully
+      if (!isComplete) {
+        if (!hasReceivedEvent) {
+          onError({ error: 'connection_error', message: 'Failed to connect to server' });
+        } else {
+          onError({ error: 'connection_error', message: 'Connection to server lost' });
+        }
+        eventSource.close();
+      }
+    };
+
+    // Return cleanup function
+    return () => eventSource.close();
   }
 
   // Snapshots

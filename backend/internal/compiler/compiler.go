@@ -121,7 +121,7 @@ func (s *Service) Compile(ctx context.Context, input CompileInput) (*CompileOutp
 			{Role: "user", Content: renderedPrompt},
 		},
 		Temperature: 0,
-		MaxTokens:   16000, // Large output for full spec
+		MaxTokens:   32000, // Large output for full spec (increased from 16000 to prevent truncation)
 	}
 
 	resp, err := llmClient.Complete(ctx, req)
