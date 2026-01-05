@@ -3,6 +3,7 @@ backend/bin/
 backend/specbuilder
 frontend/build/
 frontend/dist/
+*.tsbuildinfo
 
 # Dependencies
 frontend/node_modules/
@@ -40,3 +41,5 @@ coverage/
 
 # Logs
 *.log
+
+settings.local.json
