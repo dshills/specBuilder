@@ -8,11 +8,12 @@ Spec Builder guides you through a structured question-and-answer process to elic
 
 **Key Features:**
 - Question-driven spec elicitation with AI-generated follow-up questions
+- AI-powered answer suggestions for unanswered questions
 - Versioned answers with full edit history
-- Deterministic spec compilation into structured JSON
-- Validation and issue tracking (missing/conflict/assumption)
+- Real-time spec compilation with SSE streaming
+- Validation and issue tracking with issue-to-question linking
 - Visual exploration of spec structure
-- Export of AI-coder-ready artifact bundles
+- Export of AI-coder-ready artifact bundles with ready-to-use prompts
 
 ## Architecture
 
@@ -135,6 +136,7 @@ specbuilder/
 │   └── internal/
 │       ├── api/            # HTTP handlers and middleware
 │       ├── compiler/       # LLM-based spec compiler
+│       ├── diff/           # Snapshot diffing
 │       ├── domain/         # Domain types and errors
 │       ├── export/         # AI Coder Pack export
 │       ├── llm/            # LLM provider abstraction
@@ -190,6 +192,7 @@ When your spec is complete, export an AI Coder Pack containing:
 | `TRACE.json` | Maps spec paths to source answers |
 | `DECISIONS.md` | Compilation metadata and assumptions |
 | `ACCEPTANCE.md` | Acceptance criteria |
+| `PROMPTS.md` | Ready-to-use prompts for AI coding agents |
 
 This pack is designed to be directly consumable by AI coding agents.
 
@@ -220,6 +223,8 @@ This pack is designed to be directly consumable by AI coding agents.
 | `GEMINI_API_KEY` | — | Google Gemini API key (preferred) |
 | `OPENAI_API_KEY` | — | OpenAI API key |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key |
+| `SPECBUILDER_LLM_PROVIDER` | — | Override LLM provider (`gemini`, `openai`, `anthropic`) |
+| `SPECBUILDER_LLM_MODEL` | — | Override default model for the selected provider |
 
 ### LLM Provider Priority
 
