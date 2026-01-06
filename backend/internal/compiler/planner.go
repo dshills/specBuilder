@@ -54,11 +54,19 @@ type PlanInput struct {
 	ExistingQuestions []*domain.Question
 	LatestAnswers     []*domain.Answer
 	Mode              QuestionMode // basic or advanced
+	Provider          llm.Provider // optional: override default provider
+	Model             string       // optional: override default model
 }
 
 // Plan runs the planner to determine next questions.
 func (s *Service) Plan(ctx context.Context, input PlanInput) (*PlannerOutput, error) {
-	llmClient, err := s.factory.CreateDefaultClient()
+	var llmClient llm.Client
+	var err error
+	if input.Provider != "" && input.Model != "" {
+		llmClient, err = s.factory.CreateClient(input.Provider, input.Model)
+	} else {
+		llmClient, err = s.factory.CreateDefaultClient()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create llm client: %w", err)
 	}
@@ -136,11 +144,19 @@ type AskInput struct {
 	ExistingQuestions  []*domain.Question
 	LatestAnswers      []*domain.Answer
 	Mode               QuestionMode // basic or advanced
+	Provider           llm.Provider // optional: override default provider
+	Model              string       // optional: override default model
 }
 
 // Ask generates questions based on planner suggestions.
 func (s *Service) Ask(ctx context.Context, input AskInput) (*AskerOutput, error) {
-	llmClient, err := s.factory.CreateDefaultClient()
+	var llmClient llm.Client
+	var err error
+	if input.Provider != "" && input.Model != "" {
+		llmClient, err = s.factory.CreateClient(input.Provider, input.Model)
+	} else {
+		llmClient, err = s.factory.CreateDefaultClient()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create llm client: %w", err)
 	}
@@ -214,6 +230,8 @@ type SuggestInput struct {
 	LatestAnswers       []*domain.Answer
 	CurrentSpec         json.RawMessage
 	Mode                QuestionMode // basic or advanced
+	Provider            llm.Provider // optional: override default provider
+	Model               string       // optional: override default model
 }
 
 // Suggest generates suggested answers for unanswered questions.
@@ -222,7 +240,13 @@ func (s *Service) Suggest(ctx context.Context, input SuggestInput) (*SuggesterOu
 		return &SuggesterOutput{Suggestions: []SuggesterSuggestion{}}, nil
 	}
 
-	llmClient, err := s.factory.CreateDefaultClient()
+	var llmClient llm.Client
+	var err error
+	if input.Provider != "" && input.Model != "" {
+		llmClient, err = s.factory.CreateClient(input.Provider, input.Model)
+	} else {
+		llmClient, err = s.factory.CreateDefaultClient()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create llm client: %w", err)
 	}

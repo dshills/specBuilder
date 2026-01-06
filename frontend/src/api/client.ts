@@ -19,7 +19,8 @@ import type {
   SuggestionsStageEvent,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// In production (Docker), use relative paths. In dev, fall back to localhost:8080
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8080');
 
 class ApiClient {
   private async request<T>(
@@ -121,10 +122,14 @@ class ApiClient {
     onStage: (event: NextQuestionsStageEvent) => void,
     onError: (event: CompileErrorEvent) => void,
     onComplete: (event: NextQuestionsStageEvent) => void,
-    count: number = 5
+    count: number = 5,
+    provider?: Provider,
+    model?: string
   ): () => void {
     const params = new URLSearchParams();
     params.set('count', count.toString());
+    if (provider) params.set('provider', provider);
+    if (model) params.set('model', model);
     const url = `${API_BASE}/projects/${projectId}/next-questions/stream?${params}`;
 
     const eventSource = new EventSource(url);
@@ -145,12 +150,11 @@ class ApiClient {
       eventSource.close();
     });
 
-    eventSource.addEventListener('error', (e) => {
-      if (e instanceof MessageEvent && e.data) {
-        const data = JSON.parse(e.data) as CompileErrorEvent;
-        onError(data);
-        eventSource.close();
-      }
+    // Note: We use "fail" instead of "error" because "error" is a reserved EventSource event
+    eventSource.addEventListener('fail', (e) => {
+      const data = JSON.parse(e.data) as CompileErrorEvent;
+      onError(data);
+      eventSource.close();
     });
 
     eventSource.onerror = () => {
@@ -243,13 +247,11 @@ class ApiClient {
       eventSource.close();
     });
 
-    eventSource.addEventListener('error', (e) => {
-      if (e instanceof MessageEvent && e.data) {
-        const data = JSON.parse(e.data) as CompileErrorEvent;
-        onError(data);
-        eventSource.close();
-      }
-      // Don't handle generic errors here - let onerror handle them
+    // Note: We use "fail" instead of "error" because "error" is a reserved EventSource event
+    eventSource.addEventListener('fail', (e) => {
+      const data = JSON.parse(e.data) as CompileErrorEvent;
+      onError(data);
+      eventSource.close();
     });
 
     eventSource.onerror = () => {
@@ -311,9 +313,15 @@ class ApiClient {
     projectId: string,
     onStage: (event: SuggestionsStageEvent) => void,
     onError: (event: CompileErrorEvent) => void,
-    onComplete: (event: SuggestionsStageEvent) => void
+    onComplete: (event: SuggestionsStageEvent) => void,
+    provider?: Provider,
+    model?: string
   ): () => void {
-    const url = `${API_BASE}/projects/${projectId}/suggestions/stream`;
+    const params = new URLSearchParams();
+    if (provider) params.set('provider', provider);
+    if (model) params.set('model', model);
+    const query = params.toString();
+    const url = `${API_BASE}/projects/${projectId}/suggestions/stream${query ? `?${query}` : ''}`;
 
     const eventSource = new EventSource(url);
     let hasReceivedEvent = false;
@@ -333,12 +341,11 @@ class ApiClient {
       eventSource.close();
     });
 
-    eventSource.addEventListener('error', (e) => {
-      if (e instanceof MessageEvent && e.data) {
-        const data = JSON.parse(e.data) as CompileErrorEvent;
-        onError(data);
-        eventSource.close();
-      }
+    // Note: We use "fail" instead of "error" because "error" is a reserved EventSource event
+    eventSource.addEventListener('fail', (e) => {
+      const data = JSON.parse(e.data) as CompileErrorEvent;
+      onError(data);
+      eventSource.close();
     });
 
     eventSource.onerror = () => {

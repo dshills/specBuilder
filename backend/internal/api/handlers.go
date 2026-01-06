@@ -693,7 +693,8 @@ func (h *Handler) Compile(w http.ResponseWriter, r *http.Request) {
 }
 
 // CompileStream handles compilation with SSE progress updates.
-// SSE event types: "stage" for progress, "complete" for success, "error" for failure
+// SSE event types: "stage" for progress, "complete" for success, "fail" for failure
+// Note: We use "fail" instead of "error" because "error" is reserved in the EventSource API
 type compileStageEvent struct {
 	Stage      string  `json:"stage"`                 // "preparing", "compiling", "saving", "validating", "complete"
 	Message    string  `json:"message"`               // Human-readable description
@@ -741,7 +742,7 @@ func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("projectId")
 	projectID, err := parseUUID(idStr)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
+		sendEvent("fail", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
 		return
 	}
 
@@ -753,24 +754,24 @@ func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
 	sendStage("preparing", "Loading project and answers...")
 
 	if h.compiler == nil {
-		sendEvent("error", map[string]string{"error": "service_unavailable", "message": "Compilation service not configured"})
+		sendEvent("fail", map[string]string{"error": "service_unavailable", "message": "Compilation service not configured"})
 		return
 	}
 
 	project, err := h.repo.GetProject(r.Context(), projectID)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "not_found", "message": "Project not found"})
+		sendEvent("fail", map[string]string{"error": "not_found", "message": "Project not found"})
 		return
 	}
 
 	answers, err := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "internal_error", "message": "Failed to get answers"})
+		sendEvent("fail", map[string]string{"error": "internal_error", "message": "Failed to get answers"})
 		return
 	}
 
 	if len(answers) == 0 {
-		sendEvent("error", map[string]string{"error": "no_answers", "message": "No answers to compile"})
+		sendEvent("fail", map[string]string{"error": "no_answers", "message": "No answers to compile"})
 		return
 	}
 
@@ -811,7 +812,7 @@ func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
 		Model:       model,
 	})
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "compilation_failed", "message": err.Error()})
+		sendEvent("fail", map[string]string{"error": "compilation_failed", "message": err.Error()})
 		return
 	}
 
@@ -829,7 +830,7 @@ func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.CreateSnapshot(r.Context(), snapshot); err != nil {
-		sendEvent("error", map[string]string{"error": "internal_error", "message": "Failed to save snapshot"})
+		sendEvent("fail", map[string]string{"error": "internal_error", "message": "Failed to save snapshot"})
 		return
 	}
 
@@ -986,7 +987,8 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 }
 
 // NextQuestionsStream handles next question generation with SSE progress updates.
-// SSE event types: "stage" for progress, "complete" for success, "error" for failure
+// SSE event types: "stage" for progress, "complete" for success, "fail" for failure
+// Note: We use "fail" instead of "error" because "error" is reserved in the EventSource API
 type nextQuestionsStageEvent struct {
 	Stage         string `json:"stage"`                    // "preparing", "planning", "asking", "saving", "complete"
 	Message       string `json:"message"`                  // Human-readable description
@@ -1033,7 +1035,7 @@ func (h *Handler) NextQuestionsStream(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("projectId")
 	projectID, err := parseUUID(idStr)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
+		sendEvent("fail", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
 		return
 	}
 
@@ -1044,18 +1046,20 @@ func (h *Handler) NextQuestionsStream(w http.ResponseWriter, r *http.Request) {
 			count = parsed
 		}
 	}
+	provider := llm.Provider(r.URL.Query().Get("provider"))
+	model := r.URL.Query().Get("model")
 
 	// Stage 1: Preparing
 	sendStage("preparing", "Loading project and existing questions...")
 
 	if h.compiler == nil {
-		sendEvent("error", map[string]string{"error": "service_unavailable", "message": "LLM service not configured"})
+		sendEvent("fail", map[string]string{"error": "service_unavailable", "message": "LLM service not configured"})
 		return
 	}
 
 	project, err := h.repo.GetProject(r.Context(), projectID)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "not_found", "message": "Project not found"})
+		sendEvent("fail", map[string]string{"error": "not_found", "message": "Project not found"})
 		return
 	}
 
@@ -1089,9 +1093,11 @@ func (h *Handler) NextQuestionsStream(w http.ResponseWriter, r *http.Request) {
 		ExistingQuestions: questions,
 		LatestAnswers:     answers,
 		Mode:              mode,
+		Provider:          provider,
+		Model:             model,
 	})
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "planner_failed", "message": err.Error()})
+		sendEvent("fail", map[string]string{"error": "planner_failed", "message": err.Error()})
 		return
 	}
 
@@ -1105,9 +1111,11 @@ func (h *Handler) NextQuestionsStream(w http.ResponseWriter, r *http.Request) {
 		ExistingQuestions:  questions,
 		LatestAnswers:      answers,
 		Mode:               mode,
+		Provider:           provider,
+		Model:              model,
 	})
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "asker_failed", "message": err.Error()})
+		sendEvent("fail", map[string]string{"error": "asker_failed", "message": err.Error()})
 		return
 	}
 
@@ -1172,6 +1180,10 @@ func (h *Handler) GenerateSuggestions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse query params for provider/model
+	provider := llm.Provider(r.URL.Query().Get("provider"))
+	model := r.URL.Query().Get("model")
+
 	// Get project
 	project, err := h.repo.GetProject(r.Context(), projectID)
 	if err != nil {
@@ -1226,6 +1238,8 @@ func (h *Handler) GenerateSuggestions(w http.ResponseWriter, r *http.Request) {
 		LatestAnswers:       answers,
 		CurrentSpec:         currentSpec,
 		Mode:                mode,
+		Provider:            provider,
+		Model:               model,
 	})
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "suggester_failed", err.Error())
@@ -1247,7 +1261,8 @@ func (h *Handler) GenerateSuggestions(w http.ResponseWriter, r *http.Request) {
 }
 
 // SuggestionsStream handles suggestion generation with SSE progress updates.
-// SSE event types: "stage" for progress, "complete" for success, "error" for failure
+// SSE event types: "stage" for progress, "complete" for success, "fail" for failure
+// Note: We use "fail" instead of "error" because "error" is reserved in the EventSource API
 type suggestionsStageEvent struct {
 	Stage           string           `json:"stage"`                      // "preparing", "suggesting", "complete"
 	Message         string           `json:"message"`                    // Human-readable description
@@ -1295,21 +1310,25 @@ func (h *Handler) SuggestionsStream(w http.ResponseWriter, r *http.Request) {
 	projectIDStr := r.PathValue("projectId")
 	projectID, err := parseUUID(projectIDStr)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
+		sendEvent("fail", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
 		return
 	}
+
+	// Parse query params for provider/model
+	provider := llm.Provider(r.URL.Query().Get("provider"))
+	model := r.URL.Query().Get("model")
 
 	// Stage 1: Preparing
 	sendStage("preparing", "Loading project and unanswered questions...")
 
 	if h.compiler == nil {
-		sendEvent("error", map[string]string{"error": "service_unavailable", "message": "LLM service not configured"})
+		sendEvent("fail", map[string]string{"error": "service_unavailable", "message": "LLM service not configured"})
 		return
 	}
 
 	project, err := h.repo.GetProject(r.Context(), projectID)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "not_found", "message": "Project not found"})
+		sendEvent("fail", map[string]string{"error": "not_found", "message": "Project not found"})
 		return
 	}
 
@@ -1322,7 +1341,7 @@ func (h *Handler) SuggestionsStream(w http.ResponseWriter, r *http.Request) {
 	// Get all questions and filter for unanswered
 	questions, err := h.repo.ListQuestions(r.Context(), projectID, nil, nil)
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "internal_error", "message": "Failed to list questions"})
+		sendEvent("fail", map[string]string{"error": "internal_error", "message": "Failed to list questions"})
 		return
 	}
 
@@ -1365,9 +1384,11 @@ func (h *Handler) SuggestionsStream(w http.ResponseWriter, r *http.Request) {
 		LatestAnswers:       answers,
 		CurrentSpec:         currentSpec,
 		Mode:                mode,
+		Provider:            provider,
+		Model:               model,
 	})
 	if err != nil {
-		sendEvent("error", map[string]string{"error": "suggester_failed", "message": err.Error()})
+		sendEvent("fail", map[string]string{"error": "suggester_failed", "message": err.Error()})
 		return
 	}
 

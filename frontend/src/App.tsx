@@ -120,7 +120,7 @@ function App() {
     }
   };
 
-  const refreshSuggestions = useCallback((projectId: string) => {
+  const refreshSuggestions = useCallback((projectId: string, provider?: Provider | null, model?: string | null) => {
     // Clean up any existing SSE connection
     if (suggestionsCleanupRef.current) {
       suggestionsCleanupRef.current();
@@ -150,7 +150,9 @@ function App() {
         }
         setLoadingSuggestions(false);
         setSuggestionsProgress(null);
-      }
+      },
+      provider || undefined,
+      model || undefined
     );
 
     suggestionsCleanupRef.current = cleanup;
@@ -185,14 +187,14 @@ function App() {
         // Refresh questions to update status
         await loadQuestions(project.id);
         // Refresh suggestions in background (don't await)
-        refreshSuggestions(project.id);
+        refreshSuggestions(project.id, selectedProvider, selectedModel);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to submit answer'
         );
       }
     },
-    [project, refreshSuggestions]
+    [project, refreshSuggestions, selectedProvider, selectedModel]
   );
 
   const handleGenerateMore = useCallback(() => {
@@ -224,15 +226,17 @@ function App() {
         // Refresh questions list to get newly created questions
         await loadQuestions(project.id);
         // Refresh suggestions for the new questions
-        refreshSuggestions(project.id);
+        refreshSuggestions(project.id, selectedProvider, selectedModel);
         setGenerating(false);
         setGenerateProgress(null);
       },
-      5 // count
+      5, // count
+      selectedProvider || undefined,
+      selectedModel || undefined
     );
 
     generateCleanupRef.current = cleanup;
-  }, [project, refreshSuggestions]);
+  }, [project, refreshSuggestions, selectedProvider, selectedModel]);
 
   const handleCompile = useCallback(() => {
     if (!project) return;
