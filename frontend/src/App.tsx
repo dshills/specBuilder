@@ -1,10 +1,37 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api/client';
-import { Dashboard, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
+import { Dashboard, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer, ThemeToggle } from './components';
 import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion, CompileStageEvent, NextQuestionsStageEvent, SuggestionsStageEvent } from './types';
 import './App.css';
 
+type Theme = 'light' | 'dark';
+
+function getInitialTheme(): Theme {
+  const saved = localStorage.getItem('specbuilder_theme');
+  if (saved === 'light' || saved === 'dark') {
+    return saved;
+  }
+  // Check system preference
+  if (window.matchMedia?.('(prefers-color-scheme: light)').matches) {
+    return 'light';
+  }
+  return 'dark';
+}
+
 function App() {
+  // Theme state
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('specbuilder_theme', theme);
+  }, [theme]);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   // State
   const [projects, setProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project | null>(null);
@@ -321,6 +348,7 @@ function App() {
             Dashboard
           </button>
         )}
+        <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
       </header>
 
       {error && (
