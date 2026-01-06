@@ -45,9 +45,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Questions
 	mux.HandleFunc("GET /projects/{projectId}/questions", h.ListQuestions)
 	mux.HandleFunc("POST /projects/{projectId}/next-questions", h.GenerateNextQuestions)
+	mux.HandleFunc("GET /projects/{projectId}/next-questions/stream", h.NextQuestionsStream)
 
 	// Suggestions
 	mux.HandleFunc("POST /projects/{projectId}/suggestions", h.GenerateSuggestions)
+	mux.HandleFunc("GET /projects/{projectId}/suggestions/stream", h.SuggestionsStream)
 
 	// Answers
 	mux.HandleFunc("POST /projects/{projectId}/answers", h.SubmitAnswer)
@@ -983,6 +985,172 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, nextQuestionsResponse{Questions: newQuestions})
 }
 
+// NextQuestionsStream handles next question generation with SSE progress updates.
+// SSE event types: "stage" for progress, "complete" for success, "error" for failure
+type nextQuestionsStageEvent struct {
+	Stage         string `json:"stage"`                    // "preparing", "planning", "asking", "saving", "complete"
+	Message       string `json:"message"`                  // Human-readable description
+	ElapsedMs     int64  `json:"elapsed_ms"`               // Time elapsed for this stage
+	TotalMs       int64  `json:"total_ms"`                 // Total time elapsed since start
+	QuestionCount *int   `json:"question_count,omitempty"` // Set when complete
+}
+
+func (h *Handler) NextQuestionsStream(w http.ResponseWriter, r *http.Request) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Helper to send SSE event
+	sendEvent := func(eventType string, data interface{}) {
+		jsonData, _ := json.Marshal(data)
+		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, jsonData)
+		flusher.Flush()
+	}
+
+	startTime := time.Now()
+	stageStart := startTime
+
+	sendStage := func(stage, message string) {
+		now := time.Now()
+		sendEvent("stage", nextQuestionsStageEvent{
+			Stage:     stage,
+			Message:   message,
+			ElapsedMs: now.Sub(stageStart).Milliseconds(),
+			TotalMs:   now.Sub(startTime).Milliseconds(),
+		})
+		stageStart = now
+	}
+
+	// Parse project ID
+	idStr := r.PathValue("projectId")
+	projectID, err := parseUUID(idStr)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
+		return
+	}
+
+	// Parse query params
+	count := 5
+	if c := r.URL.Query().Get("count"); c != "" {
+		if parsed, err := strconv.Atoi(c); err == nil && parsed > 0 && parsed <= 50 {
+			count = parsed
+		}
+	}
+
+	// Stage 1: Preparing
+	sendStage("preparing", "Loading project and existing questions...")
+
+	if h.compiler == nil {
+		sendEvent("error", map[string]string{"error": "service_unavailable", "message": "LLM service not configured"})
+		return
+	}
+
+	project, err := h.repo.GetProject(r.Context(), projectID)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "not_found", "message": "Project not found"})
+		return
+	}
+
+	// Convert project mode to compiler mode
+	mode := compiler.ModeAdvanced
+	if project.Mode == domain.ProjectModeBasic {
+		mode = compiler.ModeBasic
+	}
+
+	// Get existing questions and answers
+	questions, _ := h.repo.ListQuestions(r.Context(), projectID, nil, nil)
+	answers, _ := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
+
+	// Get current spec and issues
+	var currentSpec json.RawMessage
+	var currentIssues []*domain.Issue
+	if latestID, _ := h.repo.GetLatestSnapshotID(r.Context(), projectID); latestID != nil {
+		if snap, err := h.repo.GetSnapshot(r.Context(), *latestID); err == nil {
+			currentSpec = snap.Spec
+		}
+		currentIssues, _ = h.repo.ListIssuesForSnapshot(r.Context(), *latestID)
+	}
+
+	// Stage 2: Planning
+	sendStage("planning", "Analyzing spec gaps and prioritizing questions...")
+
+	planOutput, err := h.compiler.Plan(r.Context(), compiler.PlanInput{
+		Project:           project,
+		CurrentSpec:       currentSpec,
+		CurrentIssues:     currentIssues,
+		ExistingQuestions: questions,
+		LatestAnswers:     answers,
+		Mode:              mode,
+	})
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "planner_failed", "message": err.Error()})
+		return
+	}
+
+	// Stage 3: Asking
+	sendStage("asking", "Generating clarifying questions...")
+
+	askOutput, err := h.compiler.Ask(r.Context(), compiler.AskInput{
+		Project:            project,
+		PlannerSuggestions: planOutput.Suggestions,
+		CurrentSpec:        currentSpec,
+		ExistingQuestions:  questions,
+		LatestAnswers:      answers,
+		Mode:               mode,
+	})
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "asker_failed", "message": err.Error()})
+		return
+	}
+
+	// Stage 4: Saving
+	sendStage("saving", "Persisting new questions...")
+
+	now := time.Now().UTC()
+	newQuestions := make([]*domain.Question, 0, count)
+	for i, aq := range askOutput.Questions {
+		if i >= count {
+			break
+		}
+
+		q := &domain.Question{
+			ID:        uuid.New(),
+			ProjectID: projectID,
+			Text:      aq.Text,
+			Type:      domain.QuestionType(aq.Type),
+			Options:   aq.Options,
+			Tags:      aq.Tags,
+			Priority:  aq.Priority,
+			SpecPaths: aq.SpecPaths,
+			Status:    domain.QuestionStatusUnanswered,
+			CreatedAt: now,
+		}
+
+		if err := h.repo.CreateQuestion(r.Context(), q); err != nil {
+			continue
+		}
+		newQuestions = append(newQuestions, q)
+	}
+
+	// Stage 5: Complete
+	questionCount := len(newQuestions)
+	sendEvent("complete", nextQuestionsStageEvent{
+		Stage:         "complete",
+		Message:       fmt.Sprintf("Generated %d new questions", questionCount),
+		ElapsedMs:     time.Since(stageStart).Milliseconds(),
+		TotalMs:       time.Since(startTime).Milliseconds(),
+		QuestionCount: &questionCount,
+	})
+}
+
 // Suggestions
 
 type suggestionsResponse struct {
@@ -1076,6 +1244,153 @@ func (h *Handler) GenerateSuggestions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, suggestionsResponse{Suggestions: suggestions})
+}
+
+// SuggestionsStream handles suggestion generation with SSE progress updates.
+// SSE event types: "stage" for progress, "complete" for success, "error" for failure
+type suggestionsStageEvent struct {
+	Stage           string           `json:"stage"`                      // "preparing", "suggesting", "complete"
+	Message         string           `json:"message"`                    // Human-readable description
+	ElapsedMs       int64            `json:"elapsed_ms"`                 // Time elapsed for this stage
+	TotalMs         int64            `json:"total_ms"`                   // Total time elapsed since start
+	SuggestionCount *int             `json:"suggestion_count,omitempty"` // Set when complete
+	Suggestions     []suggestionItem `json:"suggestions,omitempty"`      // Set when complete
+}
+
+func (h *Handler) SuggestionsStream(w http.ResponseWriter, r *http.Request) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Helper to send SSE event
+	sendEvent := func(eventType string, data interface{}) {
+		jsonData, _ := json.Marshal(data)
+		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, jsonData)
+		flusher.Flush()
+	}
+
+	startTime := time.Now()
+	stageStart := startTime
+
+	sendStage := func(stage, message string) {
+		now := time.Now()
+		sendEvent("stage", suggestionsStageEvent{
+			Stage:     stage,
+			Message:   message,
+			ElapsedMs: now.Sub(stageStart).Milliseconds(),
+			TotalMs:   now.Sub(startTime).Milliseconds(),
+		})
+		stageStart = now
+	}
+
+	// Parse project ID
+	projectIDStr := r.PathValue("projectId")
+	projectID, err := parseUUID(projectIDStr)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "invalid_uuid", "message": "Invalid project ID format"})
+		return
+	}
+
+	// Stage 1: Preparing
+	sendStage("preparing", "Loading project and unanswered questions...")
+
+	if h.compiler == nil {
+		sendEvent("error", map[string]string{"error": "service_unavailable", "message": "LLM service not configured"})
+		return
+	}
+
+	project, err := h.repo.GetProject(r.Context(), projectID)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "not_found", "message": "Project not found"})
+		return
+	}
+
+	// Convert project mode to compiler mode
+	mode := compiler.ModeAdvanced
+	if project.Mode == domain.ProjectModeBasic {
+		mode = compiler.ModeBasic
+	}
+
+	// Get all questions and filter for unanswered
+	questions, err := h.repo.ListQuestions(r.Context(), projectID, nil, nil)
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "internal_error", "message": "Failed to list questions"})
+		return
+	}
+
+	unanswered := make([]*domain.Question, 0)
+	for _, q := range questions {
+		if q.Status == domain.QuestionStatusUnanswered {
+			unanswered = append(unanswered, q)
+		}
+	}
+
+	if len(unanswered) == 0 {
+		suggestionCount := 0
+		sendEvent("complete", suggestionsStageEvent{
+			Stage:           "complete",
+			Message:         "No unanswered questions to suggest",
+			ElapsedMs:       time.Since(stageStart).Milliseconds(),
+			TotalMs:         time.Since(startTime).Milliseconds(),
+			SuggestionCount: &suggestionCount,
+		})
+		return
+	}
+
+	// Get latest answers for context
+	answers, _ := h.repo.GetLatestAnswersForProject(r.Context(), projectID)
+
+	// Get current spec if available
+	var currentSpec json.RawMessage
+	if snapshotID, err := h.repo.GetLatestSnapshotID(r.Context(), projectID); err == nil && snapshotID != nil {
+		if snapshot, err := h.repo.GetSnapshot(r.Context(), *snapshotID); err == nil {
+			currentSpec = snapshot.Spec
+		}
+	}
+
+	// Stage 2: Suggesting
+	sendStage("suggesting", fmt.Sprintf("Generating suggestions for %d questions...", len(unanswered)))
+
+	suggestOutput, err := h.compiler.Suggest(r.Context(), compiler.SuggestInput{
+		Project:             project,
+		UnansweredQuestions: unanswered,
+		LatestAnswers:       answers,
+		CurrentSpec:         currentSpec,
+		Mode:                mode,
+	})
+	if err != nil {
+		sendEvent("error", map[string]string{"error": "suggester_failed", "message": err.Error()})
+		return
+	}
+
+	// Stage 3: Complete - include suggestions in response
+	suggestions := make([]suggestionItem, len(suggestOutput.Suggestions))
+	for i, s := range suggestOutput.Suggestions {
+		suggestions[i] = suggestionItem{
+			QuestionID:     s.QuestionID,
+			SuggestedValue: s.SuggestedValue,
+			Confidence:     s.Confidence,
+			Reasoning:      s.Reasoning,
+		}
+	}
+
+	suggestionCount := len(suggestions)
+	sendEvent("complete", suggestionsStageEvent{
+		Stage:           "complete",
+		Message:         fmt.Sprintf("Generated %d suggestions", suggestionCount),
+		ElapsedMs:       time.Since(stageStart).Milliseconds(),
+		TotalMs:         time.Since(startTime).Milliseconds(),
+		SuggestionCount: &suggestionCount,
+		Suggestions:     suggestions,
+	})
 }
 
 // Diff

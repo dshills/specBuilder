@@ -15,6 +15,8 @@ import type {
   ApiError,
   CompileStageEvent,
   CompileErrorEvent,
+  NextQuestionsStageEvent,
+  SuggestionsStageEvent,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -111,6 +113,58 @@ class ApiClient {
       },
       180000 // 3 minute timeout
     );
+  }
+
+  // Next questions with SSE progress streaming
+  nextQuestionsStream(
+    projectId: string,
+    onStage: (event: NextQuestionsStageEvent) => void,
+    onError: (event: CompileErrorEvent) => void,
+    onComplete: (event: NextQuestionsStageEvent) => void,
+    count: number = 5
+  ): () => void {
+    const params = new URLSearchParams();
+    params.set('count', count.toString());
+    const url = `${API_BASE}/projects/${projectId}/next-questions/stream?${params}`;
+
+    const eventSource = new EventSource(url);
+    let hasReceivedEvent = false;
+    let isComplete = false;
+
+    eventSource.addEventListener('stage', (e) => {
+      hasReceivedEvent = true;
+      const data = JSON.parse(e.data) as NextQuestionsStageEvent;
+      onStage(data);
+    });
+
+    eventSource.addEventListener('complete', (e) => {
+      hasReceivedEvent = true;
+      isComplete = true;
+      const data = JSON.parse(e.data) as NextQuestionsStageEvent;
+      onComplete(data);
+      eventSource.close();
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      if (e instanceof MessageEvent && e.data) {
+        const data = JSON.parse(e.data) as CompileErrorEvent;
+        onError(data);
+        eventSource.close();
+      }
+    });
+
+    eventSource.onerror = () => {
+      if (!isComplete) {
+        if (!hasReceivedEvent) {
+          onError({ error: 'connection_error', message: 'Failed to connect to server' });
+        } else {
+          onError({ error: 'connection_error', message: 'Connection to server lost' });
+        }
+        eventSource.close();
+      }
+    };
+
+    return () => eventSource.close();
   }
 
   // Answers
@@ -250,6 +304,55 @@ class ApiClient {
       { method: 'POST' },
       120000 // 2 minute timeout
     );
+  }
+
+  // Suggestions with SSE progress streaming
+  suggestionsStream(
+    projectId: string,
+    onStage: (event: SuggestionsStageEvent) => void,
+    onError: (event: CompileErrorEvent) => void,
+    onComplete: (event: SuggestionsStageEvent) => void
+  ): () => void {
+    const url = `${API_BASE}/projects/${projectId}/suggestions/stream`;
+
+    const eventSource = new EventSource(url);
+    let hasReceivedEvent = false;
+    let isComplete = false;
+
+    eventSource.addEventListener('stage', (e) => {
+      hasReceivedEvent = true;
+      const data = JSON.parse(e.data) as SuggestionsStageEvent;
+      onStage(data);
+    });
+
+    eventSource.addEventListener('complete', (e) => {
+      hasReceivedEvent = true;
+      isComplete = true;
+      const data = JSON.parse(e.data) as SuggestionsStageEvent;
+      onComplete(data);
+      eventSource.close();
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      if (e instanceof MessageEvent && e.data) {
+        const data = JSON.parse(e.data) as CompileErrorEvent;
+        onError(data);
+        eventSource.close();
+      }
+    });
+
+    eventSource.onerror = () => {
+      if (!isComplete) {
+        if (!hasReceivedEvent) {
+          onError({ error: 'connection_error', message: 'Failed to connect to server' });
+        } else {
+          onError({ error: 'connection_error', message: 'Connection to server lost' });
+        }
+        eventSource.close();
+      }
+    };
+
+    return () => eventSource.close();
   }
 }
 

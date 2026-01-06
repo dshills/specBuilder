@@ -169,3 +169,26 @@ export interface CompileErrorEvent {
   error: string;
   message: string;
 }
+
+// Next questions streaming types
+export type NextQuestionsStage = 'preparing' | 'planning' | 'asking' | 'saving' | 'complete';
+
+export interface NextQuestionsStageEvent {
+  stage: NextQuestionsStage;
+  message: string;
+  elapsed_ms: number;
+  total_ms: number;
+  question_count?: number;
+}
+
+// Suggestions streaming types
+export type SuggestionsStage = 'preparing' | 'suggesting' | 'complete';
+
+export interface SuggestionsStageEvent {
+  stage: SuggestionsStage;
+  message: string;
+  elapsed_ms: number;
+  total_ms: number;
+  suggestion_count?: number;
+  suggestions?: Suggestion[];
+}

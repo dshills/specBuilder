@@ -32,7 +32,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={true}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -53,7 +55,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -80,7 +84,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -104,7 +110,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -129,7 +137,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -153,7 +163,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -175,7 +187,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -195,7 +209,9 @@ describe('QuestionList', () => {
           disabled={true}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -221,7 +237,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 
@@ -245,7 +263,9 @@ describe('QuestionList', () => {
           disabled={false}
           loading={false}
           generating={false}
+          generateProgress={null}
           loadingSuggestions={false}
+          suggestionsProgress={null}
         />
       );
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api/client';
 import { Dashboard, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer } from './components';
-import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion, CompileStageEvent } from './types';
+import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion, CompileStageEvent, NextQuestionsStageEvent, SuggestionsStageEvent } from './types';
 import './App.css';
 
 function App() {
@@ -25,10 +25,14 @@ function App() {
   const [compiling, setCompiling] = useState(false);
   const [compileProgress, setCompileProgress] = useState<CompileStageEvent | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState<NextQuestionsStageEvent | null>(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionsProgress, setSuggestionsProgress] = useState<SuggestionsStageEvent | null>(null);
 
-  // Ref for SSE cleanup
+  // Refs for SSE cleanup
   const compileCleanupRef = useRef<(() => void) | null>(null);
+  const generateCleanupRef = useRef<(() => void) | null>(null);
+  const suggestionsCleanupRef = useRef<(() => void) | null>(null);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -116,18 +120,40 @@ function App() {
     }
   };
 
-  const refreshSuggestions = useCallback(async (projectId: string) => {
-    // Generate suggestions in background - don't block UI
-    setLoadingSuggestions(true);
-    try {
-      const { suggestions: newSuggestions } = await api.generateSuggestions(projectId);
-      setSuggestions(newSuggestions);
-    } catch (err) {
-      // Suggestions are optional, don't show error banner
-      console.warn('Failed to generate suggestions:', err);
-    } finally {
-      setLoadingSuggestions(false);
+  const refreshSuggestions = useCallback((projectId: string) => {
+    // Clean up any existing SSE connection
+    if (suggestionsCleanupRef.current) {
+      suggestionsCleanupRef.current();
     }
+
+    setLoadingSuggestions(true);
+    setSuggestionsProgress(null);
+
+    const cleanup = api.suggestionsStream(
+      projectId,
+      // onStage
+      (event) => {
+        setSuggestionsProgress(event);
+      },
+      // onError
+      (event) => {
+        // Suggestions are optional, don't show error banner
+        console.warn('Failed to generate suggestions:', event.message);
+        setLoadingSuggestions(false);
+        setSuggestionsProgress(null);
+      },
+      // onComplete
+      (event) => {
+        // Use suggestions from the complete event
+        if (event.suggestions) {
+          setSuggestions(event.suggestions);
+        }
+        setLoadingSuggestions(false);
+        setSuggestionsProgress(null);
+      }
+    );
+
+    suggestionsCleanupRef.current = cleanup;
   }, []);
 
   const handleCreateProject = useCallback(async (name: string, mode: ProjectMode) => {
@@ -169,25 +195,43 @@ function App() {
     [project, refreshSuggestions]
   );
 
-  const handleGenerateMore = useCallback(async () => {
+  const handleGenerateMore = useCallback(() => {
     if (!project) return;
-    setGenerating(true);
-    setError(null);
-    try {
-      const { questions: newQuestions } = await api.generateNextQuestions(
-        project.id,
-        5
-      );
-      setQuestions((prev) => [...prev, ...newQuestions]);
-      // Refresh suggestions for the new questions (don't await)
-      refreshSuggestions(project.id);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to generate questions'
-      );
-    } finally {
-      setGenerating(false);
+
+    // Clean up any existing SSE connection
+    if (generateCleanupRef.current) {
+      generateCleanupRef.current();
     }
+
+    setGenerating(true);
+    setGenerateProgress(null);
+    setError(null);
+
+    const cleanup = api.nextQuestionsStream(
+      project.id,
+      // onStage
+      (event) => {
+        setGenerateProgress(event);
+      },
+      // onError
+      (event) => {
+        setError(event.message);
+        setGenerating(false);
+        setGenerateProgress(null);
+      },
+      // onComplete
+      async () => {
+        // Refresh questions list to get newly created questions
+        await loadQuestions(project.id);
+        // Refresh suggestions for the new questions
+        refreshSuggestions(project.id);
+        setGenerating(false);
+        setGenerateProgress(null);
+      },
+      5 // count
+    );
+
+    generateCleanupRef.current = cleanup;
   }, [project, refreshSuggestions]);
 
   const handleCompile = useCallback(() => {
@@ -319,7 +363,9 @@ function App() {
                 disabled={isDisabled}
                 loading={loadingQuestions}
                 generating={generating}
+                generateProgress={generateProgress}
                 loadingSuggestions={loadingSuggestions}
+                suggestionsProgress={suggestionsProgress}
               />
             </section>
 

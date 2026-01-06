@@ -1,4 +1,4 @@
-import type { Question, Suggestion } from '../types';
+import type { Question, Suggestion, NextQuestionsStageEvent, SuggestionsStageEvent } from '../types';
 import { QuestionCard } from './QuestionCard';
 
 interface QuestionListProps {
@@ -6,12 +6,14 @@ interface QuestionListProps {
   suggestions: Suggestion[];
   highlightedIds: string[];
   onSubmitAnswer: (questionId: string, value: unknown) => Promise<void>;
-  onGenerateMore: () => Promise<void>;
+  onGenerateMore: () => void;
   onClearHighlight: () => void;
   disabled: boolean;
   loading: boolean;
   generating: boolean;
+  generateProgress: NextQuestionsStageEvent | null;
   loadingSuggestions: boolean;
+  suggestionsProgress: SuggestionsStageEvent | null;
 }
 
 export function QuestionList({
@@ -24,7 +26,9 @@ export function QuestionList({
   disabled,
   loading,
   generating,
+  generateProgress,
   loadingSuggestions,
+  suggestionsProgress,
 }: QuestionListProps) {
   // Create a map for quick suggestion lookup by question ID
   const suggestionMap = new Map(
@@ -43,7 +47,7 @@ export function QuestionList({
         <h3>
           Unanswered Questions ({unanswered.length})
           {loadingSuggestions && (
-            <span className="suggestions-loading" title="Generating suggested answers...">
+            <span className="suggestions-loading" title={suggestionsProgress?.message || "Generating suggested answers..."}>
               🔄
             </span>
           )}
@@ -56,7 +60,7 @@ export function QuestionList({
             {generating ? (
               <>
                 <span className="spinner" />
-                Generating...
+                {generateProgress?.message || 'Generating...'}
               </>
             ) : (
               '+ Add Questions'
