@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+LICENSE
+CLAUDE.md
+
+# Build artifacts
+backend/bin
+frontend/dist
+frontend/build
+frontend/node_modules
+exports/
+
+# Data (should use volumes)
+data/
+tmp/
+
+# Development files
+.env
+.env.*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage/
+*.test
+*_test.go
+
+# Claude
+.claude/

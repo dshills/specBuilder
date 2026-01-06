@@ -40,6 +40,11 @@ Spec Builder guides you through a structured question-and-answer process to elic
 
 ## Prerequisites
 
+**For Docker (recommended):**
+- **Docker** with Docker Compose — [Download](https://docs.docker.com/get-docker/)
+- **LLM API Key** (at least one)
+
+**For local development:**
 - **Go 1.22+** — [Download](https://go.dev/dl/)
 - **Node.js 18+** — [Download](https://nodejs.org/)
 - **LLM API Key** (at least one):
@@ -49,14 +54,35 @@ Spec Builder guides you through a structured question-and-answer process to elic
 
 ## Quick Start
 
-### 1. Clone the repository
+### Option A: Docker (Recommended)
+
+The easiest way to run Spec Builder:
+
+```bash
+# Clone the repository
+git clone https://github.com/dshills/specbuilder.git
+cd specbuilder
+
+# Set up your API key
+cp .env.example .env
+# Edit .env and add at least one API key
+
+# Run with Docker Compose
+docker compose up --build
+```
+
+Open http://localhost:3080 and start building your spec.
+
+### Option B: Local Development
+
+#### 1. Clone the repository
 
 ```bash
 git clone https://github.com/dshills/specbuilder.git
 cd specbuilder
 ```
 
-### 2. Set up environment variables
+#### 2. Set up environment variables
 
 Create a `.env` file in the project root or export the variables:
 
@@ -73,7 +99,7 @@ export PORT=8080                                 # Backend port (default: 8080)
 export DB_PATH="./data/specbuilder.db"          # Database path (default: data/specbuilder.db)
 ```
 
-### 3. Build and run
+#### 3. Build and run
 
 ```bash
 # Build both backend and frontend
@@ -90,9 +116,9 @@ The application will be available at:
 - **Frontend:** http://localhost:5173
 - **Backend API:** http://localhost:8080
 
-### 4. Create your first project
+### Create your first project
 
-1. Open http://localhost:5173 in your browser
+1. Open the app in your browser (http://localhost:3080 for Docker, http://localhost:5173 for local dev)
 2. Click "Create Project" and enter a name
 3. Answer the initial seed questions about your product
 4. Click "Add Questions" to generate follow-up questions based on your answers
@@ -147,6 +173,9 @@ specbuilder/
 │       ├── api/           # Backend API client
 │       ├── components/    # React components
 │       └── types/         # TypeScript types
+├── docker/                # Docker configuration
+│   ├── nginx.conf        # Nginx reverse proxy config
+│   └── entrypoint.sh     # Container startup script
 ├── contracts/             # API and schema contracts
 │   ├── api/              # OpenAPI specification
 │   └── spec/             # ProjectImplementationSpec JSON Schema
@@ -234,6 +263,60 @@ The backend will use the first available provider in this order:
 3. Anthropic (`ANTHROPIC_API_KEY`)
 
 The server will start without an LLM key, but compilation endpoints will be disabled.
+
+## Docker
+
+### Running with Docker Compose
+
+```bash
+# Start the application
+docker compose up --build
+
+# Run in detached mode
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+
+# Stop the application
+docker compose down
+
+# Stop and remove data volume
+docker compose down -v
+```
+
+### Environment Variables
+
+Docker reads API keys from a `.env` file or your shell environment:
+
+```bash
+# Option 1: Use .env file
+cp .env.example .env
+# Edit .env and add your keys
+
+# Option 2: Pass from shell
+export GEMINI_API_KEY=your-key
+docker compose up --build
+```
+
+### Data Persistence
+
+SQLite data is stored in a Docker volume (`specbuilder-data`). To backup:
+
+```bash
+docker run --rm -v specbuilder-data:/data -v $(pwd):/backup alpine \
+  cp /data/specbuilder.db /backup/specbuilder-backup.db
+```
+
+### Plain Docker (without Compose)
+
+```bash
+docker build -t specbuilder .
+docker run -p 3080:3080 \
+  --env-file .env \
+  -v specbuilder-data:/app/data \
+  specbuilder
+```
 
 ## Development
 
