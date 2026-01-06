@@ -45,13 +45,16 @@ class ApiClient {
 
       if (!response.ok) {
         const error = data as ApiError;
-        throw new Error(error.message || 'API request failed');
+        throw new Error(error.message || `Server returned error ${response.status}`);
       }
 
       return data as T;
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
+        throw new Error(`Request timed out after ${timeoutMs / 1000} seconds. The server may be overloaded or the LLM is taking longer than expected.`);
+      }
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        throw new Error('Unable to reach the server. Check your network connection and ensure the backend is running.');
       }
       throw err;
     } finally {
@@ -71,7 +74,7 @@ class ApiClient {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to delete project');
+      throw new Error(error.message || `Server returned error ${response.status} while deleting project`);
     }
   }
 
@@ -160,9 +163,9 @@ class ApiClient {
     eventSource.onerror = () => {
       if (!isComplete) {
         if (!hasReceivedEvent) {
-          onError({ error: 'connection_error', message: 'Failed to connect to server' });
+          onError({ error: 'connection_error', message: 'Unable to connect to server for question generation. Check that the backend is running and try again.' });
         } else {
-          onError({ error: 'connection_error', message: 'Connection to server lost' });
+          onError({ error: 'connection_error', message: 'Connection lost during question generation. The server may have restarted. Please try again.' });
         }
         eventSource.close();
       }
@@ -258,9 +261,9 @@ class ApiClient {
       // Only report error if we haven't completed successfully
       if (!isComplete) {
         if (!hasReceivedEvent) {
-          onError({ error: 'connection_error', message: 'Failed to connect to server' });
+          onError({ error: 'connection_error', message: 'Unable to connect to server for compilation. Check that the backend is running and try again.' });
         } else {
-          onError({ error: 'connection_error', message: 'Connection to server lost' });
+          onError({ error: 'connection_error', message: 'Connection lost during compilation. The server may have restarted or the LLM timed out. Please try again.' });
         }
         eventSource.close();
       }
@@ -351,9 +354,9 @@ class ApiClient {
     eventSource.onerror = () => {
       if (!isComplete) {
         if (!hasReceivedEvent) {
-          onError({ error: 'connection_error', message: 'Failed to connect to server' });
+          onError({ error: 'connection_error', message: 'Unable to connect to server for suggestions. Check that the backend is running.' });
         } else {
-          onError({ error: 'connection_error', message: 'Connection to server lost' });
+          onError({ error: 'connection_error', message: 'Connection lost while generating suggestions. They will be refreshed on next answer.' });
         }
         eventSource.close();
       }

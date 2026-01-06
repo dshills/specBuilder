@@ -126,7 +126,8 @@ function App() {
         setIssues(issues);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load project');
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Unable to load project: ${message}. The project may have been deleted or the server is unavailable.`);
       localStorage.removeItem('specbuilder_project_id');
     } finally {
       setLoadingProject(false);
@@ -139,9 +140,8 @@ function App() {
       const { questions } = await api.listQuestions(projectId);
       setQuestions(questions);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to load questions'
-      );
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Unable to load questions: ${message}. Try refreshing the page.`);
     } finally {
       setLoadingQuestions(false);
     }
@@ -191,7 +191,8 @@ function App() {
       const { project_id } = await api.createProject(name, mode);
       await loadProject(project_id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create project');
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Unable to create project "${name}": ${message}. Check that the server is running and try again.`);
     }
   }, []);
 
@@ -201,7 +202,8 @@ function App() {
       await api.deleteProject(projectId);
       await loadProjects();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete project');
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Unable to delete project: ${message}. The project may already be deleted or is in use.`);
     }
   }, [loadProjects]);
 
@@ -216,9 +218,8 @@ function App() {
         // Refresh suggestions in background (don't await)
         refreshSuggestions(project.id, selectedProvider, selectedModel);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to submit answer'
-        );
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Unable to save your answer: ${message}. Your changes may not have been saved.`);
       }
     },
     [project, refreshSuggestions, selectedProvider, selectedModel]
@@ -297,7 +298,8 @@ function App() {
             setSnapshot(snapshot);
             setIssues(newIssues);
           } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load snapshot');
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            setError(`Compilation succeeded but failed to load the result: ${message}. Try clicking Compile again.`);
           }
         }
         setCompiling(false);

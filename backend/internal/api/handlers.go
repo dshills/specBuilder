@@ -129,7 +129,7 @@ type listProjectsResponse struct {
 func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	projects, err := h.repo.ListProjects(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list projects")
+		writeError(w, http.StatusInternalServerError, "internal_error", "Unable to retrieve projects from the database. Please try again.")
 		return
 	}
 	if projects == nil {
@@ -147,11 +147,11 @@ type createProjectResponse struct {
 func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	var req createProjectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "Invalid JSON body")
+		writeError(w, http.StatusBadRequest, "invalid_json", "The request body contains invalid JSON. Please check the format and try again.")
 		return
 	}
 	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "validation_error", "name is required")
+		writeError(w, http.StatusBadRequest, "validation_error", "Project name is required. Please provide a name for your project.")
 		return
 	}
 
