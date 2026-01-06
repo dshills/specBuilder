@@ -2,6 +2,8 @@
 
 A requirements compiler that converts product ideas into formal, machine-usable specifications for AI coding agents. Spec Builder uses LLMs as constrained compilers (not chatbots) with strict structured outputs.
 
+![Spec Builder Screenshot](docs/images/specbuilder-advanced.png)
+
 ## Overview
 
 Spec Builder guides you through a structured question-and-answer process to elicit product requirements, then compiles your answers into a comprehensive specification that AI coding agents (Claude Code, Cursor, Codex, etc.) can consume directly.
