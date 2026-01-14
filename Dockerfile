@@ -4,7 +4,7 @@
 # =============================================================================
 # Stage 1: Build Go backend
 # =============================================================================
-FROM golang:1.23-alpine AS backend-builder
+FROM golang:1.24-alpine AS backend-builder
 
 # Install build dependencies for CGO (required by sqlite3)
 RUN apk add --no-cache gcc musl-dev
