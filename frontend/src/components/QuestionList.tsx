@@ -14,6 +14,7 @@ interface QuestionListProps {
   generateProgress: NextQuestionsStageEvent | null;
   loadingSuggestions: boolean;
   suggestionsProgress: SuggestionsStageEvent | null;
+  hasAnswers: boolean;
 }
 
 export function QuestionList({
@@ -29,6 +30,7 @@ export function QuestionList({
   generateProgress,
   loadingSuggestions,
   suggestionsProgress,
+  hasAnswers,
 }: QuestionListProps) {
   // Create a map for quick suggestion lookup by question ID
   const suggestionMap = new Map(
@@ -54,8 +56,8 @@ export function QuestionList({
           <button
             className="generate-more"
             onClick={onGenerateMore}
-            disabled={disabled || generating}
-            title="Use AI to generate more questions based on your answers and spec gaps"
+            disabled={disabled || generating || !hasAnswers}
+            title={!hasAnswers ? "Answer at least one question first" : "Use AI to generate more questions based on your answers and spec gaps"}
           >
             {generating ? (
               <>

@@ -35,6 +35,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={false}
         />
       );
 
@@ -58,6 +59,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={false}
         />
       );
 
@@ -87,6 +89,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={true}
         />
       );
 
@@ -113,6 +116,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={false}
         />
       );
 
@@ -140,6 +144,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={false}
         />
       );
 
@@ -166,6 +171,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={true}
         />
       );
 
@@ -190,6 +196,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={true}
         />
       );
 
@@ -212,10 +219,56 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={true}
         />
       );
 
       expect(screen.getByRole('button', { name: '+ Add Questions' })).toBeDisabled();
+    });
+
+    it('disables button when no answers exist', () => {
+      render(
+        <QuestionList
+          questions={[]}
+          suggestions={[]}
+          highlightedIds={[]}
+          onSubmitAnswer={vi.fn()}
+          onGenerateMore={vi.fn()}
+          onClearHighlight={vi.fn()}
+          disabled={false}
+          loading={false}
+          generating={false}
+          generateProgress={null}
+          loadingSuggestions={false}
+          suggestionsProgress={null}
+          hasAnswers={false}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: '+ Add Questions' })).toBeDisabled();
+    });
+
+    it('shows helpful tooltip when no answers exist', () => {
+      render(
+        <QuestionList
+          questions={[]}
+          suggestions={[]}
+          highlightedIds={[]}
+          onSubmitAnswer={vi.fn()}
+          onGenerateMore={vi.fn()}
+          onClearHighlight={vi.fn()}
+          disabled={false}
+          loading={false}
+          generating={false}
+          generateProgress={null}
+          loadingSuggestions={false}
+          suggestionsProgress={null}
+          hasAnswers={false}
+        />
+      );
+
+      const button = screen.getByRole('button', { name: '+ Add Questions' });
+      expect(button).toHaveAttribute('title', 'Answer at least one question first');
     });
   });
 
@@ -240,6 +293,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={false}
         />
       );
 
@@ -266,6 +320,7 @@ describe('QuestionList', () => {
           generateProgress={null}
           loadingSuggestions={false}
           suggestionsProgress={null}
+          hasAnswers={true}
         />
       );
 

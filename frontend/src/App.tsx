@@ -400,6 +400,7 @@ function App() {
                 generateProgress={generateProgress}
                 loadingSuggestions={loadingSuggestions}
                 suggestionsProgress={suggestionsProgress}
+                hasAnswers={answeredCount > 0}
               />
             </section>
 
