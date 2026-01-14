@@ -1,4 +1,5 @@
-.PHONY: all build test run clean backend-build backend-test backend-run frontend-build frontend-test frontend-run help
+.PHONY: all build test run clean backend-build backend-test backend-run frontend-build frontend-test frontend-run help \
+        docker-build docker-up docker-down docker-rebuild docker-logs docker-clean
 
 # Default target
 all: build
@@ -26,6 +27,14 @@ help:
 	@echo "  frontend-build  Build React frontend"
 	@echo "  frontend-test   Run frontend tests"
 	@echo "  frontend-run    Start frontend dev server"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build    Build Docker image"
+	@echo "  docker-up       Start container (detached)"
+	@echo "  docker-down     Stop container"
+	@echo "  docker-rebuild  Force rebuild and restart"
+	@echo "  docker-logs     View container logs"
+	@echo "  docker-clean    Stop and remove volumes"
 
 # Build both backend and frontend
 build: backend-build frontend-build
@@ -76,3 +85,24 @@ lint:
 # Generate (placeholder for future code generation)
 generate:
 	cd backend && go generate ./...
+
+# Docker targets
+docker-build:
+	docker compose build
+
+docker-up:
+	docker compose up -d
+
+docker-down:
+	docker compose down
+
+docker-rebuild:
+	docker compose down
+	docker compose build --no-cache
+	docker compose up -d
+
+docker-logs:
+	docker compose logs -f
+
+docker-clean:
+	docker compose down -v
