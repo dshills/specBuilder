@@ -472,6 +472,7 @@ type RalphPackContents struct {
 	RequirementsMD []byte // specs/requirements.md - Technical specs
 	AgentMD        []byte // @AGENT.md - Build instructions
 	SpecJSON       []byte // specs/SPEC.json - Full spec for reference
+	UsageMD        []byte // USAGE.md - Best practice usage instructions
 }
 
 // GenerateRalphPack creates all files for the Ralph format export.
@@ -497,6 +498,9 @@ func GenerateRalphPack(input Input) (*RalphPackContents, error) {
 	// @AGENT.md - Build instructions and quality gates
 	contents.AgentMD = renderRalphAgentMD(input.Project, input.Snapshot.Spec)
 
+	// USAGE.md - Best practice usage instructions
+	contents.UsageMD = renderRalphUsageMD(input.Project)
+
 	return contents, nil
 }
 
@@ -510,6 +514,7 @@ func WriteRalphZip(contents *RalphPackContents, w io.Writer) error {
 		"PROMPT.md":             contents.PromptMD,
 		"@fix_plan.md":          contents.FixPlanMD,
 		"@AGENT.md":             contents.AgentMD,
+		"USAGE.md":              contents.UsageMD,
 		"specs/requirements.md": contents.RequirementsMD,
 		"specs/SPEC.json":       contents.SpecJSON,
 	}
@@ -1241,6 +1246,221 @@ func renderRalphAgentMD(project *domain.Project, spec json.RawMessage) []byte {
 	buf.WriteString("- [ ] Breaking changes documented\n")
 	buf.WriteString("- [ ] Features tested within Ralph loop (if applicable)\n")
 	buf.WriteString("- [ ] CI/CD pipeline passes\n\n")
+
+	buf.WriteString("---\n\n")
+	buf.WriteString(fmt.Sprintf("*Generated for: %s*\n", project.Name))
+
+	return buf.Bytes()
+}
+
+// renderRalphUsageMD generates the USAGE.md file with best practice instructions.
+func renderRalphUsageMD(project *domain.Project) []byte {
+	var buf bytes.Buffer
+
+	buf.WriteString("# Ralph Export Usage Guide\n\n")
+	buf.WriteString(fmt.Sprintf("This guide explains how to use the Ralph export files for **%s** effectively.\n\n", project.Name))
+
+	// Quick Start
+	buf.WriteString("## Quick Start\n\n")
+	buf.WriteString("Follow these steps in order for the best results:\n\n")
+	buf.WriteString("### Step 1: Extract and Set Up\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# Extract the archive\n")
+	buf.WriteString("unzip ralph-export.zip -d my-project\n")
+	buf.WriteString("cd my-project\n\n")
+	buf.WriteString("# Initialize git (if not already a repo)\n")
+	buf.WriteString("git init\n")
+	buf.WriteString("git add .\n")
+	buf.WriteString("git commit -m \"Initial commit from Ralph export\"\n")
+	buf.WriteString("```\n\n")
+
+	buf.WriteString("### Step 2: Review the Specifications\n")
+	buf.WriteString("Before starting development, read these files in order:\n\n")
+	buf.WriteString("1. **`specs/requirements.md`** - Understand the full technical requirements\n")
+	buf.WriteString("2. **`specs/SPEC.json`** - Machine-readable spec for reference\n")
+	buf.WriteString("3. **`@fix_plan.md`** - See prioritized tasks\n")
+	buf.WriteString("4. **`PROMPT.md`** - Understand Ralph's operating guidelines\n")
+	buf.WriteString("5. **`@AGENT.md`** - Learn the build commands and quality standards\n\n")
+
+	buf.WriteString("### Step 3: Start Ralph\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# Start Ralph with the PROMPT.md context\n")
+	buf.WriteString("ralph start --prompt PROMPT.md\n\n")
+	buf.WriteString("# Or use Claude Code with the project\n")
+	buf.WriteString("claude \"Read PROMPT.md and start working on the highest priority item in @fix_plan.md\"\n")
+	buf.WriteString("```\n\n")
+
+	// File Reference
+	buf.WriteString("---\n\n")
+	buf.WriteString("## File Reference\n\n")
+	buf.WriteString("| File | Purpose | When to Update |\n")
+	buf.WriteString("|------|---------|----------------|\n")
+	buf.WriteString("| `PROMPT.md` | Agent instructions and guidelines | When changing development approach |\n")
+	buf.WriteString("| `@fix_plan.md` | Prioritized task list | After completing each task |\n")
+	buf.WriteString("| `@AGENT.md` | Build/test commands | When learning new project patterns |\n")
+	buf.WriteString("| `specs/requirements.md` | Technical specifications | Reference only (don't modify) |\n")
+	buf.WriteString("| `specs/SPEC.json` | Machine-readable spec | Reference only (don't modify) |\n")
+	buf.WriteString("| `USAGE.md` | This guide | Reference only |\n\n")
+
+	// Best Practices
+	buf.WriteString("---\n\n")
+	buf.WriteString("## Best Practices\n\n")
+
+	buf.WriteString("### 1. Work in Priority Order\n\n")
+	buf.WriteString("Always work through `@fix_plan.md` in priority order:\n\n")
+	buf.WriteString("- **High Priority** items first - these are foundational\n")
+	buf.WriteString("- **Medium Priority** after high is complete\n")
+	buf.WriteString("- **Low Priority** only after medium is done\n\n")
+	buf.WriteString("*Resist the temptation to jump ahead or cherry-pick easy tasks.*\n\n")
+
+	buf.WriteString("### 2. One Task Per Loop\n\n")
+	buf.WriteString("Ralph works best with focused iterations:\n\n")
+	buf.WriteString("1. Pick ONE task from `@fix_plan.md`\n")
+	buf.WriteString("2. Implement it completely\n")
+	buf.WriteString("3. Run relevant tests\n")
+	buf.WriteString("4. Commit and push changes\n")
+	buf.WriteString("5. Mark the task complete in `@fix_plan.md`\n")
+	buf.WriteString("6. Repeat\n\n")
+	buf.WriteString("*Don't try to do multiple tasks in one loop.*\n\n")
+
+	buf.WriteString("### 3. Search Before Building\n\n")
+	buf.WriteString("Before implementing anything:\n\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# Search for existing implementations\n")
+	buf.WriteString("grep -r \"function_name\" src/\n")
+	buf.WriteString("grep -r \"ClassName\" src/\n")
+	buf.WriteString("```\n\n")
+	buf.WriteString("The codebase may already have what you need. Avoid duplicate implementations.\n\n")
+
+	buf.WriteString("### 4. Test After Each Change\n\n")
+	buf.WriteString("Run tests after every implementation:\n\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# Run the test suite (see @AGENT.md for project-specific commands)\n")
+	buf.WriteString("npm test        # Node.js\n")
+	buf.WriteString("go test ./...   # Go\n")
+	buf.WriteString("pytest          # Python\n")
+	buf.WriteString("```\n\n")
+	buf.WriteString("*Never mark a task complete if tests are failing.*\n\n")
+
+	buf.WriteString("### 5. Keep @fix_plan.md Updated\n\n")
+	buf.WriteString("The fix plan is a living document:\n\n")
+	buf.WriteString("- [x] Mark completed tasks with `[x]`\n")
+	buf.WriteString("- Add new tasks discovered during implementation\n")
+	buf.WriteString("- Move tasks between priority levels as needed\n")
+	buf.WriteString("- Add notes about blockers or dependencies\n\n")
+
+	buf.WriteString("### 6. Commit Early and Often\n\n")
+	buf.WriteString("Use conventional commit messages:\n\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("git add .\n")
+	buf.WriteString("git commit -m \"feat(module): implement feature X\"\n")
+	buf.WriteString("git push\n")
+	buf.WriteString("```\n\n")
+	buf.WriteString("Commit types:\n")
+	buf.WriteString("- `feat:` - New feature\n")
+	buf.WriteString("- `fix:` - Bug fix\n")
+	buf.WriteString("- `docs:` - Documentation\n")
+	buf.WriteString("- `test:` - Adding tests\n")
+	buf.WriteString("- `refactor:` - Code refactoring\n")
+	buf.WriteString("- `chore:` - Maintenance tasks\n\n")
+
+	buf.WriteString("### 7. Know When to Stop\n\n")
+	buf.WriteString("Set `EXIT_SIGNAL: true` when:\n\n")
+	buf.WriteString("- All items in `@fix_plan.md` are marked `[x]`\n")
+	buf.WriteString("- All tests pass\n")
+	buf.WriteString("- All requirements in `specs/` are implemented\n")
+	buf.WriteString("- There's nothing meaningful left to do\n\n")
+	buf.WriteString("*Don't invent busy work. Quality over quantity.*\n\n")
+
+	// Common Workflows
+	buf.WriteString("---\n\n")
+	buf.WriteString("## Common Workflows\n\n")
+
+	buf.WriteString("### Starting a New Feature\n\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# 1. Check the requirements\n")
+	buf.WriteString("cat specs/requirements.md | grep -A 10 \"Feature Name\"\n\n")
+	buf.WriteString("# 2. Search for related code\n")
+	buf.WriteString("grep -r \"related_term\" src/\n\n")
+	buf.WriteString("# 3. Create feature branch\n")
+	buf.WriteString("git checkout -b feature/my-feature\n\n")
+	buf.WriteString("# 4. Implement the feature\n")
+	buf.WriteString("# ... write code ...\n\n")
+	buf.WriteString("# 5. Test\n")
+	buf.WriteString("npm test\n\n")
+	buf.WriteString("# 6. Commit and push\n")
+	buf.WriteString("git add . && git commit -m \"feat: implement my-feature\" && git push\n\n")
+	buf.WriteString("# 7. Update @fix_plan.md\n")
+	buf.WriteString("# Mark the task as [x] complete\n")
+	buf.WriteString("```\n\n")
+
+	buf.WriteString("### Debugging an Issue\n\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# 1. Check the spec for expected behavior\n")
+	buf.WriteString("cat specs/requirements.md | grep -A 5 \"expected behavior\"\n\n")
+	buf.WriteString("# 2. Search for related code\n")
+	buf.WriteString("grep -r \"function_name\" src/\n\n")
+	buf.WriteString("# 3. Add logging/debugging\n")
+	buf.WriteString("# ... investigate ...\n\n")
+	buf.WriteString("# 4. Fix and test\n")
+	buf.WriteString("# 5. Commit: git commit -m \"fix: resolve issue X\"\n")
+	buf.WriteString("```\n\n")
+
+	buf.WriteString("### Picking Up Where You Left Off\n\n")
+	buf.WriteString("```bash\n")
+	buf.WriteString("# 1. Check git status\n")
+	buf.WriteString("git status\n\n")
+	buf.WriteString("# 2. Review what's left\n")
+	buf.WriteString("cat @fix_plan.md | grep \"\\[ \\]\"\n\n")
+	buf.WriteString("# 3. Run tests to verify current state\n")
+	buf.WriteString("npm test\n\n")
+	buf.WriteString("# 4. Continue with the next task\n")
+	buf.WriteString("```\n\n")
+
+	// Troubleshooting
+	buf.WriteString("---\n\n")
+	buf.WriteString("## Troubleshooting\n\n")
+
+	buf.WriteString("### \"I don't know where to start\"\n\n")
+	buf.WriteString("1. Read `specs/requirements.md` completely\n")
+	buf.WriteString("2. Look at High Priority items in `@fix_plan.md`\n")
+	buf.WriteString("3. Start with the first uncompleted `[ ]` item\n\n")
+
+	buf.WriteString("### \"Tests are failing\"\n\n")
+	buf.WriteString("1. Don't proceed until tests pass\n")
+	buf.WriteString("2. Check if it's a pre-existing failure or your change\n")
+	buf.WriteString("3. Fix the issue before marking any task complete\n")
+	buf.WriteString("4. If you can't fix it, add it to `@fix_plan.md` as High Priority\n\n")
+
+	buf.WriteString("### \"The spec is unclear\"\n\n")
+	buf.WriteString("1. Check `specs/SPEC.json` for machine-readable details\n")
+	buf.WriteString("2. Make reasonable assumptions and document them\n")
+	buf.WriteString("3. Add a note in `@fix_plan.md` about the ambiguity\n")
+	buf.WriteString("4. Implement the most sensible interpretation\n\n")
+
+	buf.WriteString("### \"I'm stuck in a loop\"\n\n")
+	buf.WriteString("1. Check if you're doing busy work (refactoring working code, over-testing)\n")
+	buf.WriteString("2. Review if all `@fix_plan.md` items are actually complete\n")
+	buf.WriteString("3. If everything is done, set `EXIT_SIGNAL: true`\n")
+	buf.WriteString("4. Quality over quantity - it's okay to finish early\n\n")
+
+	// Summary
+	buf.WriteString("---\n\n")
+	buf.WriteString("## Summary\n\n")
+	buf.WriteString("The Ralph workflow in a nutshell:\n\n")
+	buf.WriteString("```\n")
+	buf.WriteString("1. Read specs/requirements.md to understand the project\n")
+	buf.WriteString("2. Pick the top uncompleted item from @fix_plan.md\n")
+	buf.WriteString("3. Search the codebase before implementing\n")
+	buf.WriteString("4. Implement ONE task completely\n")
+	buf.WriteString("5. Run tests and fix any failures\n")
+	buf.WriteString("6. Commit and push changes\n")
+	buf.WriteString("7. Mark the task [x] in @fix_plan.md\n")
+	buf.WriteString("8. Repeat until @fix_plan.md is complete\n")
+	buf.WriteString("9. Set EXIT_SIGNAL: true when done\n")
+	buf.WriteString("```\n\n")
+
+	buf.WriteString("*Remember: One task at a time. Test everything. Know when you're done.*\n\n")
 
 	buf.WriteString("---\n\n")
 	buf.WriteString(fmt.Sprintf("*Generated for: %s*\n", project.Name))
