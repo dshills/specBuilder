@@ -16,6 +16,12 @@ services:
       - GEMINI_API_KEY
       - OPENAI_API_KEY
       - ANTHROPIC_API_KEY
+      # Ollama running on host machine (requires Ollama to listen on 0.0.0.0)
+      # Set OLLAMA_HOST=0.0.0.0:11434 when starting Ollama on your host
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    # Ensures host.docker.internal works on Linux (built-in on macOS/Windows)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
 volumes:
