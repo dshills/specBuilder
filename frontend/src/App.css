@@ -760,6 +760,33 @@ body {
   background: var(--accent-blue-hover);
 }
 
+.export-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-format-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.export-format-select:hover {
+  border-color: var(--accent-blue);
+}
+
+.export-format-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .issues-panel {
   background: var(--error-bg);
   border: 1px solid var(--error-border);

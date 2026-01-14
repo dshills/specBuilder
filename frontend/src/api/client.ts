@@ -17,6 +17,7 @@ import type {
   CompileErrorEvent,
   NextQuestionsStageEvent,
   SuggestionsStageEvent,
+  ExportFormat,
 } from '../types';
 
 // In production (Docker), use relative paths. In dev, fall back to localhost:8080
@@ -293,12 +294,17 @@ class ApiClient {
   }
 
   // Export
-  getExportUrl(projectId: string, snapshotId?: string): string {
+  getExportUrl(projectId: string, snapshotId?: string, format?: ExportFormat): string {
     const base = `${API_BASE}/projects/${projectId}/export`;
+    const params = new URLSearchParams();
     if (snapshotId) {
-      return `${base}?snapshot_id=${snapshotId}`;
+      params.set('snapshot_id', snapshotId);
     }
-    return base;
+    if (format) {
+      params.set('format', format);
+    }
+    const queryString = params.toString();
+    return queryString ? `${base}?${queryString}` : base;
   }
 
   // Suggestions

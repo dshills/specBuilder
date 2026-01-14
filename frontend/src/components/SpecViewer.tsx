@@ -1,4 +1,6 @@
-import type { SpecSnapshot, CompileStageEvent, CompileStage } from '../types';
+import { useState } from 'react';
+import type { SpecSnapshot, CompileStageEvent, CompileStage, ExportFormat } from '../types';
+import { api } from '../api/client';
 
 interface SpecViewerProps {
   snapshot: SpecSnapshot | null;
@@ -6,7 +8,7 @@ interface SpecViewerProps {
   compiling: boolean;
   compileProgress: CompileStageEvent | null;
   disabled: boolean;
-  exportUrl: string | null;
+  projectId: string | null;
 }
 
 const STAGE_LABELS: Record<CompileStage, string> = {
@@ -36,11 +38,18 @@ export function SpecViewer({
   compiling,
   compileProgress,
   disabled,
-  exportUrl,
+  projectId,
 }: SpecViewerProps) {
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('default');
+
   const currentStageIndex = compileProgress
     ? STAGES.indexOf(compileProgress.stage)
     : -1;
+
+  const getExportUrl = (): string | null => {
+    if (!projectId || !snapshot) return null;
+    return api.getExportUrl(projectId, snapshot.id, exportFormat);
+  };
 
   return (
     <div className="spec-viewer">
@@ -61,14 +70,24 @@ export function SpecViewer({
               'Compile'
             )}
           </button>
-          {exportUrl && (
-            <a
-              className="export-button"
-              href={exportUrl}
-              download
-            >
-              Export Pack
-            </a>
+          {projectId && snapshot && (
+            <div className="export-controls">
+              <select
+                className="export-format-select"
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+              >
+                <option value="default">AI Coder Pack</option>
+                <option value="ralph">Ralph Format</option>
+              </select>
+              <a
+                className="export-button"
+                href={getExportUrl() || '#'}
+                download
+              >
+                Export
+              </a>
+            </div>
           )}
         </div>
       </div>

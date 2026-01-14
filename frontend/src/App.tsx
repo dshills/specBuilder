@@ -410,7 +410,7 @@ function App() {
                 compiling={compiling}
                 compileProgress={compileProgress}
                 disabled={isDisabled || answeredCount === 0}
-                exportUrl={snapshot ? api.getExportUrl(project.id, snapshot.id) : null}
+                projectId={project?.id || null}
               />
             </section>
           </div>

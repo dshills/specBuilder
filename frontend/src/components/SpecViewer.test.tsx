@@ -28,7 +28,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
@@ -46,7 +46,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
@@ -64,7 +64,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
@@ -80,7 +80,7 @@ describe('SpecViewer', () => {
           compiling={true}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
@@ -95,7 +95,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={true}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
@@ -110,7 +110,7 @@ describe('SpecViewer', () => {
           compiling={true}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
@@ -131,7 +131,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId="p1"
         />
       );
 
@@ -151,7 +151,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId="p1"
         />
       );
 
@@ -170,7 +170,7 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId="p1"
         />
       );
 
@@ -178,8 +178,8 @@ describe('SpecViewer', () => {
     });
   });
 
-  describe('export button', () => {
-    it('does not show export button when no exportUrl', () => {
+  describe('export controls', () => {
+    it('does not show export controls when no projectId', () => {
       render(
         <SpecViewer
           snapshot={createSnapshot()}
@@ -187,29 +187,29 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl={null}
+          projectId={null}
         />
       );
 
-      expect(screen.queryByRole('link', { name: 'Export Pack' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Export' })).not.toBeInTheDocument();
     });
 
-    it('shows export button when exportUrl provided', () => {
+    it('does not show export controls when no snapshot', () => {
       render(
         <SpecViewer
-          snapshot={createSnapshot()}
+          snapshot={null}
           onCompile={vi.fn()}
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl="http://localhost:8080/projects/p1/export"
+          projectId="p1"
         />
       );
 
-      expect(screen.getByRole('link', { name: 'Export Pack' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Export' })).not.toBeInTheDocument();
     });
 
-    it('export link has correct href', () => {
+    it('shows export controls when projectId and snapshot provided', () => {
       render(
         <SpecViewer
           snapshot={createSnapshot()}
@@ -217,12 +217,11 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl="http://localhost:8080/projects/p1/export"
+          projectId="p1"
         />
       );
 
-      const link = screen.getByRole('link', { name: 'Export Pack' });
-      expect(link).toHaveAttribute('href', 'http://localhost:8080/projects/p1/export');
+      expect(screen.getByRole('link', { name: 'Export' })).toBeInTheDocument();
     });
 
     it('export link has download attribute', () => {
@@ -233,12 +232,65 @@ describe('SpecViewer', () => {
           compiling={false}
           compileProgress={null}
           disabled={false}
-          exportUrl="http://localhost:8080/projects/p1/export"
+          projectId="p1"
         />
       );
 
-      const link = screen.getByRole('link', { name: 'Export Pack' });
+      const link = screen.getByRole('link', { name: 'Export' });
       expect(link).toHaveAttribute('download');
+    });
+
+    it('shows format dropdown with options', () => {
+      render(
+        <SpecViewer
+          snapshot={createSnapshot()}
+          onCompile={vi.fn()}
+          compiling={false}
+          compileProgress={null}
+          disabled={false}
+          projectId="p1"
+        />
+      );
+
+      const select = screen.getByRole('combobox');
+      expect(select).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'AI Coder Pack' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Ralph Format' })).toBeInTheDocument();
+    });
+
+    it('defaults to AI Coder Pack format', () => {
+      render(
+        <SpecViewer
+          snapshot={createSnapshot()}
+          onCompile={vi.fn()}
+          compiling={false}
+          compileProgress={null}
+          disabled={false}
+          projectId="p1"
+        />
+      );
+
+      const select = screen.getByRole('combobox') as HTMLSelectElement;
+      expect(select.value).toBe('default');
+    });
+
+    it('allows changing export format', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <SpecViewer
+          snapshot={createSnapshot()}
+          onCompile={vi.fn()}
+          compiling={false}
+          compileProgress={null}
+          disabled={false}
+          projectId="p1"
+        />
+      );
+
+      const select = screen.getByRole('combobox') as HTMLSelectElement;
+      await user.selectOptions(select, 'ralph');
+      expect(select.value).toBe('ralph');
     });
   });
 });

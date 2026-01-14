@@ -1578,7 +1578,13 @@ func (h *Handler) ExportPack(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.Unmarshal(snapshot.Spec, &specWithTrace)
 
-	// Generate pack
+	// Determine export format from query parameter
+	format := export.ExportFormat(r.URL.Query().Get("format"))
+	if format == "" {
+		format = export.FormatDefault
+	}
+
+	// Generate pack based on format
 	input := export.Input{
 		Project:   project,
 		Snapshot:  snapshot,
@@ -1586,20 +1592,37 @@ func (h *Handler) ExportPack(w http.ResponseWriter, r *http.Request) {
 		QABundles: qaBundles,
 	}
 
-	contents, err := export.GeneratePack(input)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "export_error", "Failed to generate export")
-		return
-	}
-
-	// Write zip response
 	var buf bytes.Buffer
-	if err := export.WriteZip(contents, &buf); err != nil {
-		writeError(w, http.StatusInternalServerError, "zip_error", "Failed to create zip")
-		return
+	var filename string
+
+	switch format {
+	case export.FormatRalph:
+		// Generate Ralph format pack
+		contents, err := export.GenerateRalphPack(input)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "export_error", "Failed to generate Ralph export")
+			return
+		}
+		if err := export.WriteRalphZip(contents, &buf); err != nil {
+			writeError(w, http.StatusInternalServerError, "zip_error", "Failed to create Ralph zip")
+			return
+		}
+		filename = fmt.Sprintf("%s-ralph-pack.zip", sanitizeFilename(project.Name))
+
+	default:
+		// Generate default AI Coder Pack
+		contents, err := export.GeneratePack(input)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "export_error", "Failed to generate export")
+			return
+		}
+		if err := export.WriteZip(contents, &buf); err != nil {
+			writeError(w, http.StatusInternalServerError, "zip_error", "Failed to create zip")
+			return
+		}
+		filename = fmt.Sprintf("%s-ai-coder-pack.zip", sanitizeFilename(project.Name))
 	}
 
-	filename := fmt.Sprintf("%s-ai-coder-pack.zip", sanitizeFilename(project.Name))
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))

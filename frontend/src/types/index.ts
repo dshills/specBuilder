@@ -192,3 +192,6 @@ export interface SuggestionsStageEvent {
   suggestion_count?: number;
   suggestions?: Suggestion[];
 }
+
+// Export format types
+export type ExportFormat = 'default' | 'ralph';
