@@ -15,7 +15,7 @@ Spec Builder guides you through a structured question-and-answer process to elic
 - Real-time spec compilation with SSE streaming
 - Validation and issue tracking with issue-to-question linking
 - Visual exploration of spec structure
-- Export of AI-coder-ready artifact bundles with ready-to-use prompts
+- Export of AI-coder-ready artifact bundles in multiple formats (AI Coder Pack, Ralph)
 
 ## Architecture
 
@@ -153,6 +153,14 @@ Frontend:
   frontend-build  Build React frontend
   frontend-test   Run frontend tests
   frontend-run    Start frontend dev server
+
+Docker:
+  docker-build    Build Docker image
+  docker-up       Start container (detached)
+  docker-down     Stop container
+  docker-rebuild  Force rebuild and restart
+  docker-logs     View container logs
+  docker-clean    Stop and remove volumes
 ```
 
 ## Project Structure
@@ -211,9 +219,13 @@ specbuilder/
 3. **Trace coverage** — Every populated spec field must have provenance in the trace
 4. **Deterministic compilation** — Same inputs produce identical spec output
 
-## AI Coder Pack Export
+## Export Formats
 
-When your spec is complete, export an AI Coder Pack containing:
+When your spec is complete, export it in one of two formats optimized for different AI coding workflows.
+
+### AI Coder Pack (Default)
+
+The standard export format containing:
 
 | File | Description |
 |------|-------------|
@@ -223,9 +235,26 @@ When your spec is complete, export an AI Coder Pack containing:
 | `TRACE.json` | Maps spec paths to source answers |
 | `DECISIONS.md` | Compilation metadata and assumptions |
 | `ACCEPTANCE.md` | Acceptance criteria |
-| `PROMPTS.md` | Ready-to-use prompts for AI coding agents |
 
-This pack is designed to be directly consumable by AI coding agents.
+This pack is designed to be directly consumable by AI coding agents like Claude Code, Cursor, and Codex.
+
+### Ralph Format
+
+Optimized for the [Ralph autonomous development loop](https://github.com/dshills/ralph-claude-code), this format provides structured files for continuous AI-driven development:
+
+| File | Description |
+|------|-------------|
+| `PROMPT.md` | Agent instructions with objectives, principles, and status reporting |
+| `@fix_plan.md` | Prioritized task list with checkbox format (High/Medium/Low) |
+| `@AGENT.md` | Build instructions and quality gates |
+| `specs/requirements.md` | Technical specifications derived from your answers |
+| `specs/SPEC.json` | Full specification for reference |
+
+The Ralph format includes:
+- **RALPH_STATUS block** for machine-readable progress reporting
+- **EXIT_SIGNAL** instructions for clean session termination
+- **Priority-based task organization** for autonomous work selection
+- **Quality gates** ensuring tests pass before feature completion
 
 ## API Endpoints
 
@@ -269,6 +298,27 @@ The server will start without an LLM key, but compilation endpoints will be disa
 ## Docker
 
 ### Running with Docker Compose
+
+Use the Makefile targets for common operations:
+
+```bash
+# Build and start (detached)
+make docker-up
+
+# View logs
+make docker-logs
+
+# Stop the application
+make docker-down
+
+# Force rebuild and restart (no cache)
+make docker-rebuild
+
+# Stop and remove data volume
+make docker-clean
+```
+
+Or use docker compose directly:
 
 ```bash
 # Start the application
