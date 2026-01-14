@@ -12,6 +12,7 @@ const (
 	ProviderOpenAI    Provider = "openai"
 	ProviderAnthropic Provider = "anthropic"
 	ProviderGoogle    Provider = "google"
+	ProviderOllama    Provider = "ollama"
 )
 
 // Config holds LLM configuration.

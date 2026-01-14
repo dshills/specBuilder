@@ -33,30 +33,34 @@ type ClientFactory interface {
 
 // Factory creates LLM clients on demand.
 type Factory struct {
-	geminiKey    string
-	openAIKey    string
-	anthropicKey string
-	defaultMod   string
-	defaultPrv   Provider
-	providers    []ProviderInfo
+	geminiKey       string
+	openAIKey       string
+	anthropicKey    string
+	ollamaAvailable bool
+	defaultMod      string
+	defaultPrv      Provider
+	providers       []ProviderInfo
 }
 
 // NewFactory creates a new LLM client factory.
 // It fetches available models from each configured provider's API.
 // Environment variables:
-//   - SPECBUILDER_LLM_PROVIDER: Override default provider (anthropic, google, openai)
+//   - SPECBUILDER_LLM_PROVIDER: Override default provider (anthropic, google, openai, ollama)
 //   - SPECBUILDER_LLM_MODEL: Override default model
+//   - OLLAMA_HOST: Ollama server URL (default: http://localhost:11434)
 func NewFactory() *Factory {
 	f := &Factory{
-		geminiKey:    os.Getenv("GEMINI_API_KEY"),
-		openAIKey:    os.Getenv("OPENAI_API_KEY"),
-		anthropicKey: os.Getenv("ANTHROPIC_API_KEY"),
+		geminiKey:       os.Getenv("GEMINI_API_KEY"),
+		openAIKey:       os.Getenv("OPENAI_API_KEY"),
+		anthropicKey:    os.Getenv("ANTHROPIC_API_KEY"),
+		ollamaAvailable: CheckOllamaAvailable(),
 	}
 
 	// Fetch models from each provider
 	f.providers = f.fetchAllProviders()
 
-	// Set defaults based on available keys (prefer Anthropic > Google > OpenAI)
+	// Set defaults based on available providers (prefer Anthropic > Google > OpenAI > Ollama)
+	// Ollama is last because cloud providers typically have better models for spec generation
 	if f.anthropicKey != "" {
 		f.defaultPrv = ProviderAnthropic
 		f.defaultMod = f.getFirstModel(ProviderAnthropic, "claude-sonnet-4-20250514")
@@ -66,6 +70,9 @@ func NewFactory() *Factory {
 	} else if f.openAIKey != "" {
 		f.defaultPrv = ProviderOpenAI
 		f.defaultMod = f.getFirstModel(ProviderOpenAI, "gpt-4o")
+	} else if f.ollamaAvailable {
+		f.defaultPrv = ProviderOllama
+		f.defaultMod = f.getFirstModel(ProviderOllama, "llama3.2")
 	}
 
 	// Override defaults with environment variables if set
@@ -87,7 +94,7 @@ func NewFactory() *Factory {
 	return f
 }
 
-// isProviderAvailable checks if a provider has an API key configured.
+// isProviderAvailable checks if a provider is configured and available.
 func (f *Factory) isProviderAvailable(provider Provider) bool {
 	switch provider {
 	case ProviderAnthropic:
@@ -96,6 +103,8 @@ func (f *Factory) isProviderAvailable(provider Provider) bool {
 		return f.geminiKey != ""
 	case ProviderOpenAI:
 		return f.openAIKey != ""
+	case ProviderOllama:
+		return f.ollamaAvailable
 	default:
 		return false
 	}
@@ -103,7 +112,7 @@ func (f *Factory) isProviderAvailable(provider Provider) bool {
 
 // fetchAllProviders fetches models from all configured providers.
 func (f *Factory) fetchAllProviders() []ProviderInfo {
-	providers := make([]ProviderInfo, 0, 3)
+	providers := make([]ProviderInfo, 0, 4)
 
 	// Anthropic
 	anthropicInfo := ProviderInfo{
@@ -176,6 +185,30 @@ func (f *Factory) fetchAllProviders() []ProviderInfo {
 	}
 	providers = append(providers, openAIInfo)
 
+	// Ollama (local)
+	ollamaInfo := ProviderInfo{
+		ID:        ProviderOllama,
+		Name:      "Ollama (Local)",
+		Available: f.ollamaAvailable,
+		Models:    []ModelInfo{},
+	}
+	if f.ollamaAvailable {
+		models, err := FetchOllamaModels("")
+		if err != nil {
+			log.Printf("Warning: failed to fetch Ollama models: %v", err)
+			// Fall back to common models
+			ollamaInfo.Models = []ModelInfo{
+				{ID: "llama3.2", Name: "Llama 3.2", Provider: ProviderOllama},
+				{ID: "llama3.1", Name: "Llama 3.1", Provider: ProviderOllama},
+				{ID: "mistral", Name: "Mistral", Provider: ProviderOllama},
+				{ID: "codellama", Name: "Code Llama", Provider: ProviderOllama},
+			}
+		} else {
+			ollamaInfo.Models = models
+		}
+	}
+	providers = append(providers, ollamaInfo)
+
 	return providers
 }
 
@@ -191,7 +224,7 @@ func (f *Factory) getFirstModel(provider Provider, fallback string) string {
 
 // Available returns true if at least one provider is configured.
 func (f *Factory) Available() bool {
-	return f.geminiKey != "" || f.openAIKey != "" || f.anthropicKey != ""
+	return f.geminiKey != "" || f.openAIKey != "" || f.anthropicKey != "" || f.ollamaAvailable
 }
 
 // DefaultProvider returns the default provider.
@@ -229,6 +262,12 @@ func (f *Factory) CreateClient(provider Provider, model string) (Client, error) 
 			return nil, fmt.Errorf("OPENAI_API_KEY not configured")
 		}
 		return NewOpenAIClient(f.openAIKey, model), nil
+
+	case ProviderOllama:
+		if !f.ollamaAvailable {
+			return nil, fmt.Errorf("Ollama server not available (check OLLAMA_HOST or start Ollama)")
+		}
+		return NewOllamaClient(model), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
