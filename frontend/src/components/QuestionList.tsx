@@ -74,7 +74,7 @@ export function QuestionList({
             No unanswered questions. Click "Add Questions" to continue.
           </p>
         ) : (
-          unanswered
+          [...unanswered]
             .sort((a, b) => b.priority - a.priority)
             .map((q) => (
               <QuestionCard

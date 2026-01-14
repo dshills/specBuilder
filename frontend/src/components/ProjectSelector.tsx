@@ -55,10 +55,7 @@ export function ProjectSelector({
       <div className="mode-selector">
         <button
           type="button"
-          style={{
-            background: mode === 'basic' ? '#3a5a8a' : 'transparent',
-            color: mode === 'basic' ? '#fff' : '#888',
-          }}
+          className={mode === 'basic' ? 'active' : ''}
           onClick={() => setMode('basic')}
           disabled={creating}
           title="Simple questions for non-technical users"
@@ -67,10 +64,7 @@ export function ProjectSelector({
         </button>
         <button
           type="button"
-          style={{
-            background: mode === 'advanced' ? '#3a5a8a' : 'transparent',
-            color: mode === 'advanced' ? '#fff' : '#888',
-          }}
+          className={mode === 'advanced' ? 'active' : ''}
           onClick={() => setMode('advanced')}
           disabled={creating}
           title="Technical questions for developers"

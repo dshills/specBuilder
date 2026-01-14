@@ -1007,11 +1007,18 @@ func (h *Handler) GenerateNextQuestions(w http.ResponseWriter, r *http.Request) 
 			break
 		}
 
+		// Validate question type from LLM output
+		qType := domain.QuestionType(aq.Type)
+		if !qType.IsValid() {
+			log.Printf("Warning: LLM generated invalid question type %q, defaulting to freeform", aq.Type)
+			qType = domain.QuestionTypeFreeform
+		}
+
 		q := &domain.Question{
 			ID:        uuid.New(),
 			ProjectID: projectID,
 			Text:      aq.Text,
-			Type:      domain.QuestionType(aq.Type),
+			Type:      qType,
 			Options:   aq.Options,
 			Tags:      aq.Tags,
 			Priority:  aq.Priority,
@@ -1172,11 +1179,18 @@ func (h *Handler) NextQuestionsStream(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		// Validate question type from LLM output
+		qType := domain.QuestionType(aq.Type)
+		if !qType.IsValid() {
+			log.Printf("Warning: LLM generated invalid question type %q, defaulting to freeform", aq.Type)
+			qType = domain.QuestionTypeFreeform
+		}
+
 		q := &domain.Question{
 			ID:        uuid.New(),
 			ProjectID: projectID,
 			Text:      aq.Text,
-			Type:      domain.QuestionType(aq.Type),
+			Type:      qType,
 			Options:   aq.Options,
 			Tags:      aq.Tags,
 			Priority:  aq.Priority,

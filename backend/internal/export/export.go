@@ -11,7 +11,12 @@ import (
 
 	"github.com/dshills/specbuilder/backend/internal/domain"
 	"github.com/google/uuid"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
+
+// titleCaser is used to title-case strings (replacement for deprecated strings.Title).
+var titleCaser = cases.Title(language.English)
 
 // ExportFormat represents the type of export package.
 type ExportFormat string
@@ -140,7 +145,7 @@ func renderSection(buf *bytes.Buffer, data interface{}, depth int) {
 	case map[string]interface{}:
 		for key, val := range v {
 			title := strings.ReplaceAll(key, "_", " ")
-			title = strings.Title(title)
+			title = titleCaser.String(title)
 			buf.WriteString(fmt.Sprintf("%s %s\n\n", prefix, title))
 			renderSection(buf, val, depth+1)
 		}
@@ -218,7 +223,7 @@ func renderAcceptanceMarkdown(spec json.RawMessage) []byte {
 		buf.WriteString("## Non-Functional Requirements\n\n")
 		for key, val := range nf {
 			title := strings.ReplaceAll(key, "_", " ")
-			title = strings.Title(title)
+			title = titleCaser.String(title)
 			buf.WriteString(fmt.Sprintf("### %s\n\n", title))
 			if arr, ok := val.([]interface{}); ok {
 				for _, item := range arr {
@@ -1031,7 +1036,7 @@ func renderRalphRequirementsMD(project *domain.Project, spec json.RawMessage) []
 		for _, key := range keys {
 			val := nf[key]
 			title := strings.ReplaceAll(key, "_", " ")
-			title = strings.Title(title)
+			title = titleCaser.String(title)
 			buf.WriteString(fmt.Sprintf("### %s\n\n", title))
 			if arr, ok := val.([]interface{}); ok {
 				for _, item := range arr {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api/client';
-import { Dashboard, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer, ThemeToggle } from './components';
+import { Dashboard, ErrorBoundary, IssuesPanel, ModelSelector, ProjectSelector, QuestionList, SpecViewer, ThemeToggle } from './components';
 import type { Project, Question, SpecSnapshot, Issue, ProviderInfo, Provider, ProjectMode, Suggestion, CompileStageEvent, NextQuestionsStageEvent, SuggestionsStageEvent } from './types';
 import './App.css';
 
@@ -369,14 +369,15 @@ function App() {
         </div>
       )}
 
-      {project ? (
-        <div className="app-content">
-          <section className="project-section">
-            <ProjectSelector
-              project={project}
-              onCreateProject={handleCreateProject}
-              loading={loadingProject}
-            />
+      <ErrorBoundary>
+        {project ? (
+          <div className="app-content">
+            <section className="project-section">
+              <ProjectSelector
+                project={project}
+                onCreateProject={handleCreateProject}
+                loading={loadingProject}
+              />
             {providers.length > 0 && (
               <ModelSelector
                 providers={providers}
@@ -427,15 +428,16 @@ function App() {
 
           <IssuesPanel issues={issues} onIssueClick={handleIssueClick} />
         </div>
-      ) : (
-        <Dashboard
-          projects={projects}
-          onSelectProject={loadProject}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          loading={loadingProjects || loadingProject}
-        />
-      )}
+        ) : (
+          <Dashboard
+            projects={projects}
+            onSelectProject={loadProject}
+            onCreateProject={handleCreateProject}
+            onDeleteProject={handleDeleteProject}
+            loading={loadingProjects || loadingProject}
+          />
+        )}
+      </ErrorBoundary>
     </div>
   );
 }

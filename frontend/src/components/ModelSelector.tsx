@@ -31,7 +31,11 @@ export function ModelSelector({
       : '';
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const [provider, model] = e.target.value.split(':') as [Provider, string];
+    const parts = e.target.value.split(':');
+    if (parts.length < 2 || !parts[0] || !parts[1]) {
+      return; // Invalid format, ignore
+    }
+    const [provider, model] = parts as [Provider, string];
     onSelect(provider, model);
   };
 

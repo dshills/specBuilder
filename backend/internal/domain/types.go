@@ -16,6 +16,22 @@ const (
 	QuestionTypeFreeform QuestionType = "freeform"
 )
 
+// ValidQuestionTypes lists all valid question types.
+var ValidQuestionTypes = []QuestionType{
+	QuestionTypeSingle,
+	QuestionTypeMulti,
+	QuestionTypeFreeform,
+}
+
+// IsValid checks if the question type is valid.
+func (qt QuestionType) IsValid() bool {
+	switch qt {
+	case QuestionTypeSingle, QuestionTypeMulti, QuestionTypeFreeform:
+		return true
+	}
+	return false
+}
+
 // QuestionStatus represents the status of a question.
 type QuestionStatus string
 

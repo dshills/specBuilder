@@ -44,6 +44,7 @@ export function QuestionCard({
   );
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState(false);
+  const isSubmittingRef = useRef(false); // Synchronous guard against rapid clicks
 
   // Initialize answer when entering edit mode
   useEffect(() => {
@@ -53,7 +54,8 @@ export function QuestionCard({
   }, [editing, currentAnswerValue, question.type]);
 
   const handleSubmit = async () => {
-    if (disabled || submitting) return;
+    // Synchronous guard prevents rapid double-clicks
+    if (disabled || submitting || isSubmittingRef.current) return;
 
     const isEmpty =
       question.type === 'multi'
@@ -62,12 +64,14 @@ export function QuestionCard({
 
     if (isEmpty) return;
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
     try {
       await onSubmitAnswer(question.id, answer);
       setAnswer(question.type === 'multi' ? [] : '');
       setEditing(false);
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };

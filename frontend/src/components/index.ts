@@ -1,4 +1,5 @@
 export { Dashboard } from './Dashboard';
+export { ErrorBoundary } from './ErrorBoundary';
 export { IssuesPanel } from './IssuesPanel';
 export { ModelSelector } from './ModelSelector';
 export { ProjectSelector } from './ProjectSelector';

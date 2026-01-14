@@ -184,7 +184,6 @@ func (s *Service) Validate(ctx context.Context, project *domain.Project, spec, t
 		"errors":   schemaResult.Errors,
 	})
 
-	projectJSON, _ := json.Marshal(project)
 	qaBundleJSON, _ := json.Marshal(qaBundles)
 
 	renderedPrompt := prompt.Render(map[string]string{
@@ -194,9 +193,6 @@ func (s *Service) Validate(ctx context.Context, project *domain.Project, spec, t
 		"SCHEMA_VALIDATION_JSON": string(schemaValidationJSON),
 		"QA_BUNDLE_JSON":         string(qaBundleJSON),
 	})
-
-	// Use PROJECT as the full project JSON for consistency
-	_ = projectJSON
 
 	req := llm.Request{
 		Messages: []llm.Message{
