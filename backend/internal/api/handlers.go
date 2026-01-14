@@ -177,7 +177,7 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 
 	// Seed minimum questions for new project
 	if err := h.seedQuestions(r.Context(), project.ID, mode); err != nil {
-		// Log but don't fail - project was created
+		log.Printf("Warning: failed to seed initial questions for project %s: %v", project.ID, err)
 	}
 
 	writeJSON(w, http.StatusCreated, createProjectResponse{ProjectID: project.ID})
@@ -446,7 +446,7 @@ func (h *Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
 
 	// Update question status
 	if err := h.repo.UpdateQuestionStatus(r.Context(), req.QuestionID, domain.QuestionStatusAnswered); err != nil {
-		// Log but don't fail
+		log.Printf("Warning: failed to update question status for %s: %v", req.QuestionID, err)
 	}
 
 	// Compilation is triggered separately via POST /projects/{id}/compile
@@ -609,11 +609,29 @@ func (h *Handler) Compile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect question IDs and batch fetch questions
+	questionIDs := make([]uuid.UUID, len(answers))
+	for i, a := range answers {
+		questionIDs[i] = a.QuestionID
+	}
+
+	questions, err := h.repo.GetQuestionsByIDs(r.Context(), questionIDs)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database_error", "Failed to load questions")
+		return
+	}
+
+	// Build question lookup map
+	questionMap := make(map[uuid.UUID]*domain.Question, len(questions))
+	for _, q := range questions {
+		questionMap[q.ID] = q
+	}
+
 	// Build Q&A bundles
 	qaBundles := make([]compiler.QABundle, 0, len(answers))
 	for _, a := range answers {
-		q, err := h.repo.GetQuestion(r.Context(), a.QuestionID)
-		if err != nil {
+		q, ok := questionMap[a.QuestionID]
+		if !ok {
 			continue // Skip if question not found
 		}
 		qaBundles = append(qaBundles, compiler.QABundle{
@@ -671,20 +689,22 @@ func (h *Handler) Compile(w http.ResponseWriter, r *http.Request) {
 	// Run validation and create issues
 	issueDrafts, err := h.compiler.Validate(r.Context(), project, output.Spec, output.Trace, qaBundles)
 	if err != nil {
-		// Log but don't fail - validation is optional
+		log.Printf("Warning: spec validation failed for project %s: %v", projectID, err)
 		issueDrafts = nil
 	}
 
 	issues := compiler.HydrateIssues(issueDrafts, projectID, snapshot.ID)
 	for _, issue := range issues {
 		if err := h.repo.CreateIssue(r.Context(), issue); err != nil {
-			// Log but don't fail
+			log.Printf("Warning: failed to save issue %s for snapshot %s: %v", issue.ID, snapshot.ID, err)
 		}
 	}
 
 	// Update project timestamp
 	project.UpdatedAt = now
-	h.repo.UpdateProject(r.Context(), project)
+	if err := h.repo.UpdateProject(r.Context(), project); err != nil {
+		log.Printf("Warning: failed to update project timestamp for %s: %v", projectID, err)
+	}
 
 	writeJSON(w, http.StatusOK, compileResponse{
 		SnapshotID: snapshot.ID,
@@ -775,11 +795,29 @@ func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect question IDs and batch fetch questions
+	questionIDs := make([]uuid.UUID, len(answers))
+	for i, a := range answers {
+		questionIDs[i] = a.QuestionID
+	}
+
+	questions, err := h.repo.GetQuestionsByIDs(r.Context(), questionIDs)
+	if err != nil {
+		sendEvent("fail", map[string]string{"error": "database_error", "message": "Failed to load questions"})
+		return
+	}
+
+	// Build question lookup map
+	questionMap := make(map[uuid.UUID]*domain.Question, len(questions))
+	for _, q := range questions {
+		questionMap[q.ID] = q
+	}
+
 	// Build Q&A bundles
 	qaBundles := make([]compiler.QABundle, 0, len(answers))
 	for _, a := range answers {
-		q, err := h.repo.GetQuestion(r.Context(), a.QuestionID)
-		if err != nil {
+		q, ok := questionMap[a.QuestionID]
+		if !ok {
 			continue
 		}
 		qaBundles = append(qaBundles, compiler.QABundle{
@@ -839,16 +877,21 @@ func (h *Handler) CompileStream(w http.ResponseWriter, r *http.Request) {
 
 	issueDrafts, err := h.compiler.Validate(r.Context(), project, output.Spec, output.Trace, qaBundles)
 	if err != nil {
+		log.Printf("Warning: spec validation failed for project %s: %v", projectID, err)
 		issueDrafts = nil // Validation is optional
 	}
 
 	issues := compiler.HydrateIssues(issueDrafts, projectID, snapshot.ID)
 	for _, issue := range issues {
-		h.repo.CreateIssue(r.Context(), issue)
+		if err := h.repo.CreateIssue(r.Context(), issue); err != nil {
+			log.Printf("Warning: failed to save issue %s for snapshot %s: %v", issue.ID, snapshot.ID, err)
+		}
 	}
 
 	project.UpdatedAt = now
-	h.repo.UpdateProject(r.Context(), project)
+	if err := h.repo.UpdateProject(r.Context(), project); err != nil {
+		log.Printf("Warning: failed to update project timestamp for %s: %v", projectID, err)
+	}
 
 	// Stage 5: Complete
 	snapshotIDStr := snapshot.ID.String()

@@ -61,6 +61,15 @@ function App() {
   const generateCleanupRef = useRef<(() => void) | null>(null);
   const suggestionsCleanupRef = useRef<(() => void) | null>(null);
 
+  // Cleanup SSE connections on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      compileCleanupRef.current?.();
+      generateCleanupRef.current?.();
+      suggestionsCleanupRef.current?.();
+    };
+  }, []);
+
   // Error state
   const [error, setError] = useState<string | null>(null);
 
@@ -95,17 +104,20 @@ function App() {
     }
   }, []);
 
-  // Load projects and check for saved project on mount
-  useEffect(() => {
-    const savedProjectId = localStorage.getItem('specbuilder_project_id');
-    if (savedProjectId) {
-      loadProject(savedProjectId);
-    } else {
-      loadProjects();
+  const loadQuestions = useCallback(async (projectId: string) => {
+    setLoadingQuestions(true);
+    try {
+      const { questions } = await api.listQuestions(projectId);
+      setQuestions(questions);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Unable to load questions: ${message}. Try refreshing the page.`);
+    } finally {
+      setLoadingQuestions(false);
     }
-  }, [loadProjects]);
+  }, []);
 
-  const loadProject = async (projectId: string) => {
+  const loadProject = useCallback(async (projectId: string) => {
     setLoadingProject(true);
     setError(null);
     try {
@@ -132,20 +144,17 @@ function App() {
     } finally {
       setLoadingProject(false);
     }
-  };
+  }, [loadQuestions]);
 
-  const loadQuestions = async (projectId: string) => {
-    setLoadingQuestions(true);
-    try {
-      const { questions } = await api.listQuestions(projectId);
-      setQuestions(questions);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setError(`Unable to load questions: ${message}. Try refreshing the page.`);
-    } finally {
-      setLoadingQuestions(false);
+  // Load projects and check for saved project on mount
+  useEffect(() => {
+    const savedProjectId = localStorage.getItem('specbuilder_project_id');
+    if (savedProjectId) {
+      loadProject(savedProjectId);
+    } else {
+      loadProjects();
     }
-  };
+  }, [loadProject, loadProjects]);
 
   const refreshSuggestions = useCallback((projectId: string, provider?: Provider | null, model?: string | null) => {
     // Clean up any existing SSE connection

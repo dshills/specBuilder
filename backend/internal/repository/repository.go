@@ -20,6 +20,7 @@ type Repository interface {
 	// Questions
 	CreateQuestion(ctx context.Context, question *domain.Question) error
 	GetQuestion(ctx context.Context, id uuid.UUID) (*domain.Question, error)
+	GetQuestionsByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.Question, error)
 	ListQuestions(ctx context.Context, projectID uuid.UUID, status *domain.QuestionStatus, tag *string) ([]*domain.Question, error)
 	UpdateQuestionStatus(ctx context.Context, id uuid.UUID, status domain.QuestionStatus) error
 

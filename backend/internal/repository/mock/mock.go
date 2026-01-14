@@ -137,6 +137,18 @@ func (r *Repository) GetQuestion(ctx context.Context, id uuid.UUID) (*domain.Que
 	return q, nil
 }
 
+func (r *Repository) GetQuestionsByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.Question, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.Question
+	for _, id := range ids {
+		if q, ok := r.questions[id]; ok {
+			result = append(result, q)
+		}
+	}
+	return result, nil
+}
+
 func (r *Repository) ListQuestions(ctx context.Context, projectID uuid.UUID, status *domain.QuestionStatus, tag *string) ([]*domain.Question, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

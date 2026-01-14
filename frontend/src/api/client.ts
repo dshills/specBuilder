@@ -63,20 +63,48 @@ class ApiClient {
     }
   }
 
+  private async requestVoid(
+    path: string,
+    options?: RequestInit,
+    timeoutMs: number = 30000
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json() as ApiError;
+        throw new Error(data.message || `Server returned error ${response.status}`);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error(`Request timed out after ${timeoutMs / 1000} seconds. The server may be overloaded or the LLM is taking longer than expected.`);
+      }
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        throw new Error('Unable to reach the server. Check your network connection and ensure the backend is running.');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   // Projects
   async listProjects(): Promise<ListProjectsResponse> {
     return this.request<ListProjectsResponse>('/projects');
   }
 
   async deleteProject(projectId: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/projects/${projectId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Server returned error ${response.status} while deleting project`);
-    }
+    return this.requestVoid(`/projects/${projectId}`, { method: 'DELETE' });
   }
 
   async createProject(name: string, mode: ProjectMode = 'advanced'): Promise<CreateProjectResponse> {

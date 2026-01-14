@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dshills/specbuilder/backend/internal/domain"
@@ -12,6 +13,14 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// escapeLikePattern escapes special SQL LIKE characters (%, _) to prevent injection.
+func escapeLikePattern(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\") // Escape backslash first
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}
 
 // SQLiteRepository implements Repository using SQLite.
 type SQLiteRepository struct {
@@ -292,6 +301,39 @@ func (r *SQLiteRepository) GetQuestion(ctx context.Context, id uuid.UUID) (*doma
 	return scanQuestion(row)
 }
 
+func (r *SQLiteRepository) GetQuestionsByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.Question, error) {
+	if len(ids) == 0 {
+		return []*domain.Question{}, nil
+	}
+
+	// Build placeholders and args
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id.String()
+	}
+
+	query := `SELECT id, project_id, text, type, options, tags, priority, spec_paths, status, created_at
+		      FROM questions WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var questions []*domain.Question
+	for rows.Next() {
+		q, err := scanQuestionFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		questions = append(questions, q)
+	}
+	return questions, rows.Err()
+}
+
 func (r *SQLiteRepository) ListQuestions(ctx context.Context, projectID uuid.UUID, status *domain.QuestionStatus, tag *string) ([]*domain.Question, error) {
 	query := `SELECT id, project_id, text, type, options, tags, priority, spec_paths, status, created_at
 		      FROM questions WHERE project_id = ?`
@@ -302,8 +344,8 @@ func (r *SQLiteRepository) ListQuestions(ctx context.Context, projectID uuid.UUI
 		args = append(args, string(*status))
 	}
 	if tag != nil {
-		query += ` AND tags LIKE ?`
-		args = append(args, "%\""+*tag+"\"%")
+		query += ` AND tags LIKE ? ESCAPE '\'`
+		args = append(args, "%\""+escapeLikePattern(*tag)+"\"%")
 	}
 	query += ` ORDER BY priority DESC, created_at ASC`
 
@@ -887,6 +929,39 @@ func (t *txRepository) GetQuestion(ctx context.Context, id uuid.UUID) (*domain.Q
 	return scanQuestion(row)
 }
 
+func (t *txRepository) GetQuestionsByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.Question, error) {
+	if len(ids) == 0 {
+		return []*domain.Question{}, nil
+	}
+
+	// Build placeholders and args
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id.String()
+	}
+
+	query := `SELECT id, project_id, text, type, options, tags, priority, spec_paths, status, created_at
+		      FROM questions WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+
+	rows, err := t.queryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var questions []*domain.Question
+	for rows.Next() {
+		q, err := scanQuestionFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		questions = append(questions, q)
+	}
+	return questions, rows.Err()
+}
+
 func (t *txRepository) ListQuestions(ctx context.Context, projectID uuid.UUID, status *domain.QuestionStatus, tag *string) ([]*domain.Question, error) {
 	query := `SELECT id, project_id, text, type, options, tags, priority, spec_paths, status, created_at
 		      FROM questions WHERE project_id = ?`
@@ -897,8 +972,8 @@ func (t *txRepository) ListQuestions(ctx context.Context, projectID uuid.UUID, s
 		args = append(args, string(*status))
 	}
 	if tag != nil {
-		query += ` AND tags LIKE ?`
-		args = append(args, "%\""+*tag+"\"%")
+		query += ` AND tags LIKE ? ESCAPE '\'`
+		args = append(args, "%\""+escapeLikePattern(*tag)+"\"%")
 	}
 	query += ` ORDER BY priority DESC, created_at ASC`
 

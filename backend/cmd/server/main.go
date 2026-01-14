@@ -35,6 +35,7 @@ func logConfig() {
 	}{
 		{"SPECBUILDER_API_PORT", "8080"},
 		{"SPECBUILDER_DB_PATH", "data/specbuilder.db"},
+		{"SPECBUILDER_CORS_ORIGINS", "* (allow all)"},
 		{"SPECBUILDER_LLM_PROVIDER", "(auto-detect)"},
 		{"SPECBUILDER_LLM_MODEL", "(auto-detect)"},
 	}
@@ -131,7 +132,8 @@ func main() {
 	// Apply middleware
 	var h http.Handler = mux
 	h = api.Logger(h)
-	h = api.CORS(h)
+	corsOrigins := os.Getenv("SPECBUILDER_CORS_ORIGINS")
+	h = api.CORS(api.CORSConfig{AllowedOrigins: corsOrigins})(h)
 
 	server := &http.Server{
 		Addr:         ":" + port,

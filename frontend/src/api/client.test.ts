@@ -358,7 +358,7 @@ describe('ApiClient', () => {
     it('throws generic error when no message', async () => {
       mockResponse({ error: 'internal_error' }, false, 500);
 
-      await expect(api.getProject('p1')).rejects.toThrow('API request failed');
+      await expect(api.getProject('p1')).rejects.toThrow('Server returned error 500');
     });
   });
 });
